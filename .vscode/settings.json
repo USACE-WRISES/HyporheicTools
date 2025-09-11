@@ -1,0 +1,17 @@
+// Enable pytest in VS Code for this workspace
+{
+  // Use your ArcGIS Pro clone as the interpreter
+  "python.defaultInterpreterPath": "C:\\Users\\gtmen\\AppData\\Local\\ESRI\\conda\\envs\\arcgispro-py3-GTM\\python.exe",
+
+  // Test framework settings
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+
+  // Where to discover tests
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+
+  // Optional: auto-discover tests when you save files
+  "python.testing.autoTestDiscoverOnSaveEnabled": true
+}

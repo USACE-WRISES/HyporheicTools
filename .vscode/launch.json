@@ -1,0 +1,104 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python Debugger: Current File",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal"
+      },
+  
+      // ------------------------------
+      // OPTION A — Run the CLI directly:  Use the CLI launches to debug interactively with the basic_case YAML (explicitly passed in args).
+      // ------------------------------
+  
+      {
+        // Run the CLI script with the basic_case YAML
+        "name": "Hyporheic: basic_case (CLI script)",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/src/HyporheicTools/cli/main.py",
+        "args": [
+          "--yaml", "examples/basic_case/input/inputs.yaml",
+          "--clean",             // wipe output dir before run (optional)
+          "--figures"        // enable Step 8 figure generation (heavier)
+        ],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true,
+        "env": {
+          // If needed, explicitly point to your exes; otherwise the CLI will bootstrap.
+          // "MODFLOW6_BIN": "${workspaceFolder}\\bin\\modflow",
+          // "MODPATH7_BIN": "${workspaceFolder}\\bin\\modflow"
+        }
+      },
+      {
+        // Same as above, but runs the package as a module: python -m HyporheicTools
+        "name": "Hyporheic: basic_case (python -m)",
+        "type": "python",
+        "request": "launch",
+        "module": "HyporheicTools",
+        "args": [
+          "--yaml", "examples/basic_case/input/inputs.yaml"
+        ],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      },
+      {
+        // Quick config validation (no MF6/MP7 run)
+        "name": "Hyporheic: dry-run (no MF6/MP7)",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/src/HyporheicTools/cli/main.py",
+        "args": [
+          "--yaml", "examples/basic_case/input/inputs.yaml",
+          "--dry-run"
+        ],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      },
+  
+      // ------------------------------
+      // OPTION B — Run via pytest: Use the pytest launches for repeatable repros; enable full runs with RUN_SLOW=1.
+      // ------------------------------
+  
+      {
+        // Unit-style fast check (no MF6/MP7)
+        "name": "Pytest: dry-run (fast)",
+        "type": "python",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "-k", "test_dry_run_loads_config_only",
+          "-q"
+        ],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      },
+      {
+        // Full model run (slow): set RUN_SLOW=1 to enable
+        "name": "Pytest: full run (slow)",
+        "type": "python",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "-k", "test_full_run_optional",
+          "-q"
+        ],
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "RUN_SLOW": "1"
+        },
+        "console": "integratedTerminal",
+        "justMyCode": true
+      }
+    ]
+  }
+  

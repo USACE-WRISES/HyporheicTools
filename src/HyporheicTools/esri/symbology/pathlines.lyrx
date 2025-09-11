@@ -1,0 +1,25 @@
+{
+  "version": "2.9",
+  "layerDefinitions": [
+    {
+      "type": "CIMFeatureLayer",
+      "name": "Pathlines",
+      "renderer": {
+        "type": "CIMSimpleRenderer",
+        "symbol": {
+          "type": "CIMSymbolReference",
+          "symbol": {
+            "type": "CIMLineSymbol",
+            "symbolLayers": [
+              {
+                "type": "CIMSolidStroke",
+                "width": 1.2,
+                "color": { "type": "CIMRGBColor", "values": [0, 92, 230, 255] }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

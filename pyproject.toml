@@ -1,0 +1,118 @@
+# What is pyproject.toml and why you want it
+# pyproject.toml is the single, standard file that:
+# Describes your project (name, version, Python requirement, dependencies).
+# Defines how to build/install it (build backend like setuptools).
+# Exposes entry points (so you get a hyporheic CLI command).
+# Packages non-code assets (your .pyt, .lyrx, .xml, inputs.yaml) into the wheel/sdist.
+# Centralizes dev/test tool configs (pytest, ruff, black, etc.).
+# It replaces old scattered files (like setup.py, setup.cfg) with a PEP‑621 compliant, future‑proof format that pip and build tools understand.
+
+[build-system]
+# Tells pip/how to build your package.
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# The distribution name users will "pip install".
+name = "hyporheic-tool"
+version = "0.1.0"
+description = "Hyporheic modeling toolkit: MODFLOW 6 + MODPATH 7 with CLI and ArcGIS Pro toolbox integration."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { file = "LICENSE" }
+
+authors = [
+  { name = "Your Name", email = "you@example.com" }
+]
+
+keywords = [
+  "hyporheic", "groundwater", "hydrology", "MODFLOW", "MODPATH",
+  "flopy", "geopandas", "rasterio", "ArcGIS", "GIS"
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Hydrology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: OS Independent"
+]
+
+# Core runtime dependencies (keep 'arcpy' OUT; it comes from ArcGIS Pro).
+dependencies = [
+  "numpy",
+  "scipy",
+  "pandas",
+  "matplotlib",
+  "seaborn",
+  "shapely",
+  "pyproj",
+  "rasterio",
+  "geopandas",
+  "flopy",
+  "modflow-devtools"
+]
+
+[project.optional-dependencies]
+# Extra bundles you can install with: pip install .[dev] or .[test]
+dev = [
+  "ruff>=0.4",
+  "black>=24.3",
+  "mypy>=1.10",
+  "pre-commit>=3.5"
+]
+test = [
+  "pytest>=8.2",
+  "pytest-cov>=5.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/hyporheic-tools"
+Repository = "https://github.com/your-org/hyporheic-tools"
+Issues = "https://github.com/your-org/hyporheic-tools/issues"
+
+[project.scripts]
+# Installs command-line entry points. After `pip install -e .`,
+# you can run `hyporheic ...` (alias `hyp`).
+hyporheic = "HyporheicTool.cli.main:main"
+hyp = "HyporheicTool.cli.main:main"
+
+[tool.setuptools]
+# src/ layout
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["HyporheicTool*"]
+
+[tool.setuptools.package-data]
+# Include non-Python assets inside the wheel so users get the Pro toolbox & symbology.
+HyporheicTool = [
+  "bin/modflow/**",
+  "inputs.yaml",
+  "esri/toolboxes/HyporheicTool.pyt",
+  "esri/symbology/*.lyrx",
+  "esri/help/gp/toolboxes/HyporheicTool.xml"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "slow: marks tests as slow (use RUN_SLOW=1 or -m slow to run)"
+]
+
+# Optional: code style / tooling (tweak to taste)
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "UP"]

@@ -1,0 +1,32 @@
+# environment/arcgispro.yml
+# Recommended clone spec for ArcGIS Pro. Create a new environment from this
+# file using Pro’s Package Manager (or conda), then install your wheel.
+
+name: arcgispro-hyporheictools
+channels:
+  - esri
+  - conda-forge
+  - defaults
+
+dependencies:
+  # ArcGIS Pro core (installs arcpy). Pin to your Pro version as needed.
+  - arcgispro=3.3
+  - python=3.11
+
+  # Scientific stack (compatible with Pro 3.3 / Python 3.11)
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - seaborn
+  - shapely
+  - pyproj
+  - rasterio
+  - geopandas
+  - flopy
+  - pyyaml        # YAML parsing for inputs
+  - tabulate      # pretty config table in CLI/GP logs
+
+  - pip
+  - pip:
+      - modflow-devtools

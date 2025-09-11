@@ -1,0 +1,229 @@
+<!-- Hyporheic_Toolbox.xml — metadata so the tool shows rich help in the Geoprocessing pane -->
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en">
+  <Esri>
+    <CreaDate>20250101</CreaDate>
+    <CreaTime>00000000</CreaTime>
+    <ArcGISFormat>1.0</ArcGISFormat>
+
+    <ArcGISArcToolboxHelp>
+      <tool name="RunModel" displayname="Run Hyporheic Model (MODFLOW 6 + MODPATH 7)">
+        <summary>
+          Build and run a MODFLOW 6 groundwater model (via FloPy), run MODPATH 7, then post-process and add key outputs (pathlines/points) to the current map.
+          You can supply a YAML configuration or fill the parameters in this dialog; when using the dialog, a timestamped YAML is written to the output folder for reproducibility.
+          Parameters are organized into sections: Input Paths; Executables (optional overrides); Simulation metadata; Grid / domain settings; Hydraulic; Stress Period / Timestep; Run Options; Derived Outputs.
+        </summary>
+
+        <parameters>
+
+          <!-- Top-level controls -->
+          <param name="inputs_yaml" displayname="Inputs YAML (optional)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Path to a YAML file describing all inputs and settings. Leave blank to use the form parameters below.</dialogExplanation>
+          </param>
+
+          <param name="out_folder" displayname="Output Folder" direction="Input" datatype="DEFolder" required="true">
+            <dialogExplanation>Folder where the model workspace, summary outputs, and (if using the form) a timestamped runtime YAML will be created.</dialogExplanation>
+          </param>
+
+          <param name="make_figures" displayname="Create Additional Results Figures in Folder" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Produce heavier publication-style figures after the run (isometric/longitudinal views, overlays). Off by default for speed.</dialogExplanation>
+          </param>
+
+          <param name="clean_first" displayname="Clean output folder before run" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Remove existing files/subfolders in the chosen output folder before the run starts.</dialogExplanation>
+          </param>
+
+          <!-- Input Paths -->
+          <param name="water_surface_elevation_raster" displayname="Water-surface raster (.tif)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Projected water-surface elevation raster used to classify river cells and boundary heads.</dialogExplanation>
+          </param>
+
+          <param name="terrain_elevation_raster" displayname="Terrain raster (.tif)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Terrain (DEM) used for grid elevation and reprojection of related rasters.</dialogExplanation>
+          </param>
+
+          <param name="ground_water_domain_shapefile" displayname="GW domain (polygon)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Groundwater model domain polygon (shapefile). Used to build idomain and clip results.</dialogExplanation>
+          </param>
+
+          <param name="left_boundary_floodplain" displayname="Left floodplain boundary (line)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Left boundary line delineating the floodplain limit.</dialogExplanation>
+          </param>
+
+          <param name="right_boundary_floodplain" displayname="Right floodplain boundary (line)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Right boundary line delineating the floodplain limit.</dialogExplanation>
+          </param>
+
+          <param name="projection_file" displayname="Projection (.prj)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Projection file (.prj) used as the target CRS for rasters/vectors when reprojecting.</dialogExplanation>
+          </param>
+
+          <param name="aerial_raster" displayname="Aerial raster (.tif, optional)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Optional basemap/aerial image used for figure backdrops when additional figures are enabled.</dialogExplanation>
+          </param>
+
+          <!-- Executables (optional overrides) -->
+          <param name="md6_exe_path" displayname="MODFLOW 6 exe (mf6.exe)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Optional explicit path to the MODFLOW 6 executable. By default the tool uses the executables that ship with HyporheicTools.</dialogExplanation>
+          </param>
+
+          <param name="md7_exe_path" displayname="MODPATH 7 exe (mp7.exe)" direction="Input" datatype="DEFile" required="false">
+            <dialogExplanation>Optional explicit path to the MODPATH 7 executable. By default the tool uses the executables that ship with HyporheicTools.</dialogExplanation>
+          </param>
+
+          <!-- Simulation metadata -->
+          <param name="sim_name" displayname="Simulation name" direction="Input" datatype="GPString" required="false">
+            <dialogExplanation>Simulation name used in output folders and labels.</dialogExplanation>
+          </param>
+
+          <param name="length_units" displayname="Length units" direction="Input" datatype="GPString" required="false">
+            <dialogExplanation>Units for X/Y/Z lengths (e.g., feet or meters).</dialogExplanation>
+          </param>
+
+          <param name="time_units" displayname="Time units" direction="Input" datatype="GPString" required="false">
+            <dialogExplanation>Time units for stress period and transport (e.g., days or seconds).</dialogExplanation>
+          </param>
+
+          <!-- Grid / domain settings -->
+          <param name="cell_size_x" displayname="Cell size X" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Grid cell width in model length units.</dialogExplanation>
+          </param>
+
+          <param name="cell_size_y" displayname="Cell size Y" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Grid cell height in model length units.</dialogExplanation>
+          </param>
+
+          <param name="gw_mod_depth" displayname="Model depth" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Model depth in length units.</dialogExplanation>
+          </param>
+
+          <param name="z" displayname="Layer thickness (z)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Layer thickness used for vertical discretization.</dialogExplanation>
+          </param>
+
+          <!-- Hydraulic -->
+          <param name="kh" displayname="Horizontal K" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Horizontal hydraulic conductivity (length/time).</dialogExplanation>
+          </param>
+
+          <param name="kv" displayname="Vertical K" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Vertical hydraulic conductivity (length/time).</dialogExplanation>
+          </param>
+
+          <param name="upstream_left_fpl_gw_gradient" displayname="Upstream Left FPL GW gradient (L/L)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Groundwater gradient used with water-surface edge for upstream-left corner head.</dialogExplanation>
+          </param>
+
+          <param name="upstream_right_fpl_gw_gradient" displayname="Upstream Right FPL GW gradient (L/L)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Groundwater gradient used with water-surface edge for upstream-right corner head.</dialogExplanation>
+          </param>
+
+          <param name="downstream_left_fpl_gw_gradient" displayname="Downstream Left FPL GW gradient (L/L)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Groundwater gradient used with water-surface edge for downstream-left corner head.</dialogExplanation>
+          </param>
+
+          <param name="downstream_right_fpl_gw_gradient" displayname="Downstream Right FPL GW gradient (L/L)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Groundwater gradient used with water-surface edge for downstream-right corner head.</dialogExplanation>
+          </param>
+
+          <param name="porosity" displayname="Porosity (0–0.6)" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Effective porosity used in transport (typical range 0.0–0.6).</dialogExplanation>
+          </param>
+
+          <!-- Stress period / timestep -->
+          <param name="nstp" displayname="nstp" direction="Input" datatype="GPLong" required="false">
+            <dialogExplanation>Number of time steps in the period.</dialogExplanation>
+          </param>
+
+          <param name="perlen" displayname="perlen" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Stress-period length (model time units).</dialogExplanation>
+          </param>
+
+          <param name="tsmult" displayname="tsmult" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Time-step multiplier.</dialogExplanation>
+          </param>
+
+          <!-- Run Options -->
+          <param name="write" displayname="Write MF inputs" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Write MODFLOW 6 input files.</dialogExplanation>
+          </param>
+
+          <param name="run" displayname="Run MF6/MP7" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Execute MODFLOW 6 followed by MODPATH 7.</dialogExplanation>
+          </param>
+
+          <param name="plot" displayname="Generate summary tables" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Generate basic summary tables/exports during post-processing.</dialogExplanation>
+          </param>
+
+          <param name="plot_show" displayname="Plot show (interactive)" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Show interactive plots (advanced; usually off inside Pro).</dialogExplanation>
+          </param>
+
+          <param name="plot_save" displayname="Plot save (png)" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>Save PNG figures from summary plots.</dialogExplanation>
+          </param>
+
+          <param name="build_contours_in_driver" displayname="Build head contours and add to map" direction="Input" datatype="GPBoolean" required="false">
+            <dialogExplanation>When enabled, builds contour feature classes from exported head GeoTIFFs and adds them to the active map (requires Spatial Analyst).</dialogExplanation>
+          </param>
+
+          <param name="contour_interval" displayname="Contour Interval" direction="Input" datatype="GPDouble" required="false">
+            <dialogExplanation>Contour interval for head contours (in model length units). Default is 0.5.</dialogExplanation>
+          </param>
+
+          <param name="max_layers" displayname="Max contour layers (leave blank = all)" direction="Input" datatype="GPLong" required="false">
+            <dialogExplanation>Limit the number of GeoTIFF layers used for contour generation. Leave blank to use all; set 0 or negative to skip.</dialogExplanation>
+          </param>
+
+          <!-- Derived Outputs (for chaining) -->
+          <param name="pathlines_fc" displayname="Pathlines (output, 2D)" direction="Output" datatype="DEFeatureClass" required="false">
+            <dialogExplanation>Output pathlines feature class (or shapefile). Added to the active map automatically.</dialogExplanation>
+          </param>
+
+          <param name="points_fc" displayname="Points (output)" direction="Output" datatype="DEFeatureClass" required="false">
+            <dialogExplanation>Output particle start/end points (feature class or shapefile). Added to the active map automatically.</dialogExplanation>
+          </param>
+
+          <param name="pathlines_3d_fc" displayname="Pathlines (output, 3D Z)" direction="Output" datatype="DEFeatureClass" required="false">
+            <dialogExplanation>3D pathlines feature class (Z-enabled). Added to the active map automatically when available.</dialogExplanation>
+          </param>
+
+          <param name="pathlines_3d_full_fc" displayname="Pathlines (output, 3D Z, Full)" direction="Output" datatype="DEFeatureClass" required="false">
+            <dialogExplanation>Full-model 3D pathlines feature class (unfiltered). Added to the active map automatically when available.</dialogExplanation>
+          </param>
+
+        </parameters>
+
+        <about>
+          <para><![CDATA[
+This tool is a front-end to the HyporheicTools package. It:
+• Reprojects and crops rasters, loads vectors, and builds the model grid and boundary conditions.
+• Writes/runs MODFLOW 6 and MODPATH 7 (via FloPy).
+• Post-processes results to create pathlines/points and adds them to the map.
+
+Executables:
+By default, the tool uses the MODFLOW 6 / MODPATH 7 executables that ship with HyporheicTools (packaged under HyporheicTools/bin/modflow) and automatically adds that folder to PATH.
+Advanced users may override the executables via the MODFLOW 6 exe and MODPATH 7 exe parameters.
+          ]]></para>
+        </about>
+
+        <usage>
+          <para><![CDATA[
+Typical workflow:
+1) Choose an Output Folder.
+2) Either provide an Inputs YAML or fill in the required path parameters (WSE, terrain, domain, boundaries, and projection).
+3) (Optional) Toggle 'Create Additional Results Figures in Folder' to produce more detailed figures.
+4) Click Run. If you used the form, a timestamped inputs_runtime_YYYYMMDD_HHMMSS.yaml is saved in the Output Folder.
+5) Pathlines/points are added to your map. Symbology is applied automatically if the .lyrx files are present.
+
+Troubleshooting:
+• If MODFLOW fails to launch, verify that the shipped executables exist under HyporheicTools/bin/modflow or supply explicit exe paths.
+• Ensure all inputs are in a consistent projection; the tool reprojects rasters/vectors to the provided .prj.
+• Check the Geoprocessing messages for a step-by-step log of the run.
+          ]]></para>
+        </usage>
+      </tool>
+    </ArcGISArcToolboxHelp>
+  </Esri>
+</metadata>

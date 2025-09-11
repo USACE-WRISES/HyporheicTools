@@ -1,0 +1,62 @@
+Particle Path — 3D Length (ft)
+  count: 294
+  mean: 340.188 ft
+  median: 290.634 ft
+  min: 31.900 ft
+  max: 655.467 ft
+  p10: 125.442 ft
+  p90: 595.222 ft
+
+Plan‑View Excursion (ft)
+  count: 294
+  mean: 310.971 ft
+  median: 273.742 ft
+  min: 29.001 ft
+  max: 575.154 ft
+  p10: 113.835 ft
+  p90: 539.619 ft
+
+Vertical Excursion (ft)
+  count: 294
+  mean: 2.526 ft
+  median: 1.062 ft
+  min: 0.188 ft
+  max: 9.809 ft
+  p10: 0.781 ft
+  p90: 5.260 ft
+
+Residence Time (days)
+  count: 294
+  mean: 34,546.926 days
+  median: 2,222.398 days
+  min: 166.609 days
+  max: 3.117e+05 days
+  p10: 1,022.052 days
+  p90: 2.076e+05 days
+
+Average Particle Velocity (ft/day)
+  count: 294
+  mean: 1.781 ft/day
+  median: 0.815 ft/day
+  min: 0.325 ft/day
+  max: 56.363 ft/day
+  p10: 0.365 ft/day
+  p90: 3.261 ft/day
+
+Hydraulic Gradient (–)
+  count: 294
+  mean: 9.277e+23
+  median: 0.000
+  min: 0.000
+  max: 1.655e+26
+  p10: 0.000
+  p90: 0.000
+
+Hyporheic Volume per Particle (ft³)
+  count: 294
+  mean: 29,444.053 ft³
+  median: 16,747.778 ft³
+  min: 1,279.688 ft³
+  max: 58,183.264 ft³
+  p10: 14,445.515 ft³
+  p90: 54,183.228 ft³

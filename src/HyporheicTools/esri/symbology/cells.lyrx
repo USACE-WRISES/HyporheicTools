@@ -1,0 +1,29 @@
+{
+  "version": "2.9",
+  "layerDefinitions": [
+    {
+      "type": "CIMFeatureLayer",
+      "name": "Cells",
+      "renderer": {
+        "type": "CIMSimpleRenderer",
+        "symbol": {
+          "type": "CIMSymbolReference",
+          "symbol": {
+            "type": "CIMPolygonSymbol",
+            "symbolLayers": [
+              {
+                "type": "CIMSolidFill",
+                "color": { "type": "CIMRGBColor", "values": [255, 170, 0, 120] }
+              },
+              {
+                "type": "CIMSolidStroke",
+                "width": 0.4,
+                "color": { "type": "CIMRGBColor", "values": [140, 90, 0, 255] }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
