@@ -1,50 +1,68 @@
 Group,Stat,Value
-Particle Path â€” 3D Length (ft),count,294.0
-Particle Path â€” 3D Length (ft),mean,340.188 ft
-Particle Path â€” 3D Length (ft),median,290.634 ft
-Particle Path â€” 3D Length (ft),min,31.900 ft
-Particle Path â€” 3D Length (ft),max,655.467 ft
-Particle Path â€” 3D Length (ft),p10,125.442 ft
-Particle Path â€” 3D Length (ft),p90,595.222 ft
-Planâ€‘View Excursion (ft),count,294.0
-Planâ€‘View Excursion (ft),mean,310.971 ft
-Planâ€‘View Excursion (ft),median,273.742 ft
-Planâ€‘View Excursion (ft),min,29.001 ft
-Planâ€‘View Excursion (ft),max,575.154 ft
-Planâ€‘View Excursion (ft),p10,113.835 ft
-Planâ€‘View Excursion (ft),p90,539.619 ft
-Vertical Excursion (ft),count,294.0
-Vertical Excursion (ft),mean,2.526 ft
-Vertical Excursion (ft),median,1.062 ft
-Vertical Excursion (ft),min,0.188 ft
-Vertical Excursion (ft),max,9.809 ft
-Vertical Excursion (ft),p10,0.781 ft
-Vertical Excursion (ft),p90,5.260 ft
-Residence Time (days),count,294.0
-Residence Time (days),mean,"34,546.926 days"
-Residence Time (days),median,"2,222.398 days"
-Residence Time (days),min,166.609 days
-Residence Time (days),max,3.117e+05 days
-Residence Time (days),p10,"1,022.052 days"
-Residence Time (days),p90,2.076e+05 days
-Average Particle Velocity (ft/day),count,294.0
-Average Particle Velocity (ft/day),mean,1.781 ft/day
-Average Particle Velocity (ft/day),median,0.815 ft/day
-Average Particle Velocity (ft/day),min,0.325 ft/day
-Average Particle Velocity (ft/day),max,56.363 ft/day
-Average Particle Velocity (ft/day),p10,0.365 ft/day
-Average Particle Velocity (ft/day),p90,3.261 ft/day
-Hydraulic Gradient (â€“),count,294.0
-Hydraulic Gradient (â€“),mean,9.277e+23
-Hydraulic Gradient (â€“),median,0.0
-Hydraulic Gradient (â€“),min,0.0
-Hydraulic Gradient (â€“),max,1.655e+26
-Hydraulic Gradient (â€“),p10,0.0
-Hydraulic Gradient (â€“),p90,0.0
-Hyporheic Volume per Particle (ftÂ³),count,294.0
-Hyporheic Volume per Particle (ftÂ³),mean,"29,444.053 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),median,"16,747.778 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),min,"1,279.688 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),max,"58,183.264 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),p10,"14,445.515 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),p90,"54,183.228 ftÂ³"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),budget file,gwf_model.cbb
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),term,CHD
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),kstpkper,"(0, 0)"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),start cells,46.0
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),end cells,19.0
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),total start flow (signed),943.725 ftÂ³/d
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),total end flow (signed),"-1,493.738 ftÂ³/d"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),|start|,"1,117.877 ftÂ³/d"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),|end|,"1,493.738 ftÂ³/d"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),"hyporheic throughflow (avg(|start|,|end|))","1,493.738 ftÂ³/d"
+Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),net flow balance (start+end),-550.013 ftÂ³/d
+Particle Path â€” 3D Length (ft),count,39.0
+Particle Path â€” 3D Length (ft),mean,168.122 ft
+Particle Path â€” 3D Length (ft),median,166.844 ft
+Particle Path â€” 3D Length (ft),min,31.982 ft
+Particle Path â€” 3D Length (ft),max,270.611 ft
+Particle Path â€” 3D Length (ft),p10,114.882 ft
+Particle Path â€” 3D Length (ft),p90,229.252 ft
+Planâ€‘View Excursion (ft),count,39.0
+Planâ€‘View Excursion (ft),mean,158.235 ft
+Planâ€‘View Excursion (ft),median,157.631 ft
+Planâ€‘View Excursion (ft),min,30.946 ft
+Planâ€‘View Excursion (ft),max,249.450 ft
+Planâ€‘View Excursion (ft),p10,106.856 ft
+Planâ€‘View Excursion (ft),p90,214.234 ft
+"Straightâ€‘Line Distance (3D, ft)",count,39.0
+"Straightâ€‘Line Distance (3D, ft)",mean,157.218 ft
+"Straightâ€‘Line Distance (3D, ft)",median,157.567 ft
+"Straightâ€‘Line Distance (3D, ft)",min,30.951 ft
+"Straightâ€‘Line Distance (3D, ft)",max,244.867 ft
+"Straightâ€‘Line Distance (3D, ft)",p10,106.663 ft
+"Straightâ€‘Line Distance (3D, ft)",p90,212.617 ft
+Vertical Excursion (ft),count,39.0
+Vertical Excursion (ft),mean,10.681 ft
+Vertical Excursion (ft),median,11.030 ft
+Vertical Excursion (ft),min,3.961 ft
+Vertical Excursion (ft),max,15.747 ft
+Vertical Excursion (ft),p10,6.958 ft
+Vertical Excursion (ft),p90,15.132 ft
+Residence Time (days),count,39.0
+Residence Time (days),mean,88.661 days
+Residence Time (days),median,78.349 days
+Residence Time (days),min,5.303 days
+Residence Time (days),max,227.230 days
+Residence Time (days),p10,40.434 days
+Residence Time (days),p90,148.177 days
+Average Particle Velocity (ft/day),count,39.0
+Average Particle Velocity (ft/day),mean,1.545 ft/day
+Average Particle Velocity (ft/day),median,1.264 ft/day
+Average Particle Velocity (ft/day),min,0.489 ft/day
+Average Particle Velocity (ft/day),max,5.699 ft/day
+Average Particle Velocity (ft/day),p10,0.869 ft/day
+Average Particle Velocity (ft/day),p90,2.187 ft/day
+Hydraulic Gradient (â€“),count,39.0
+Hydraulic Gradient (â€“),mean,0.016
+Hydraulic Gradient (â€“),median,0.016
+Hydraulic Gradient (â€“),min,0.013
+Hydraulic Gradient (â€“),max,0.021
+Hydraulic Gradient (â€“),p10,0.014
+Hydraulic Gradient (â€“),p90,0.018
+Hyporheic Volume per Particle (ftÂ³),count,39.0
+Hyporheic Volume per Particle (ftÂ³),mean,"52,157.450 ftÂ³"
+Hyporheic Volume per Particle (ftÂ³),median,"52,295.679 ftÂ³"
+Hyporheic Volume per Particle (ftÂ³),min,"47,891.187 ftÂ³"
+Hyporheic Volume per Particle (ftÂ³),max,"54,000.354 ftÂ³"
+Hyporheic Volume per Particle (ftÂ³),p10,"51,047.065 ftÂ³"
+Hyporheic Volume per Particle (ftÂ³),p90,"53,280.818 ftÂ³"

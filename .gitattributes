@@ -1,0 +1,28 @@
+# Normalize all text files to LF in repo and working tree
+* text=auto eol=lf
+
+# Keep Windows script files with CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts stay LF
+*.sh text eol=lf
+
+# YAML files stay LF
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Treat common binary formats as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.7z binary
+*.exe binary
+*.dll binary

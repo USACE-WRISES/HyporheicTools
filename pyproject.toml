@@ -8,22 +8,18 @@
 # It replaces old scattered files (like setup.py, setup.cfg) with a PEP‑621 compliant, future‑proof format that pip and build tools understand.
 
 [build-system]
-# Tells pip/how to build your package.
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# The distribution name users will "pip install".
-name = "hyporheic-tool"
+name = "hyporheic-tools"                # pip distribution name (matches repo)
 version = "0.1.0"
 description = "Hyporheic modeling toolkit: MODFLOW 6 + MODPATH 7 with CLI and ArcGIS Pro toolbox integration."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { file = "LICENSE" }
 
-authors = [
-  { name = "Your Name", email = "you@example.com" }
-]
+authors = [{ name = "Your Name", email = "you@example.com" }]
 
 keywords = [
   "hyporheic", "groundwater", "hydrology", "MODFLOW", "MODPATH",
@@ -42,7 +38,7 @@ classifiers = [
   "Operating System :: OS Independent"
 ]
 
-# Core runtime dependencies (keep 'arcpy' OUT; it comes from ArcGIS Pro).
+# Keep arcpy OUT; it comes from ArcGIS Pro.
 dependencies = [
   "numpy",
   "scipy",
@@ -53,61 +49,52 @@ dependencies = [
   "pyproj",
   "rasterio",
   "geopandas",
+  "pydantic>=2",
+  "PyYAML",
+  "tabulate",
+  "xarray",
+  "netCDF4",
   "flopy",
   "modflow-devtools"
 ]
 
 [project.optional-dependencies]
-# Extra bundles you can install with: pip install .[dev] or .[test]
-dev = [
-  "ruff>=0.4",
-  "black>=24.3",
-  "mypy>=1.10",
-  "pre-commit>=3.5"
-]
-test = [
-  "pytest>=8.2",
-  "pytest-cov>=5.0"
-]
+dev = ["ruff>=0.4", "black>=24.3", "mypy>=1.10", "pre-commit>=3.5"]
+test = ["pytest>=8.2", "pytest-cov>=5.0"]
 
 [project.urls]
-Homepage = "https://github.com/your-org/hyporheic-tools"
-Repository = "https://github.com/your-org/hyporheic-tools"
-Issues = "https://github.com/your-org/hyporheic-tools/issues"
+Homepage = "https://github.com/USACE-WRISES/HyporheicTools"
+Repository = "https://github.com/USACE-WRISES/HyporheicTools"
+Issues = "https://github.com/USACE-WRISES/HyporheicTools/issues"
 
 [project.scripts]
-# Installs command-line entry points. After `pip install -e .`,
-# you can run `hyporheic ...` (alias `hyp`).
-hyporheic = "HyporheicTool.cli.main:main"
-hyp = "HyporheicTool.cli.main:main"
+# After install, you can run: hyporheic ...   (alias: hyp)
+hyporheic = "HyporheicTools.cli.main:main"
+hyp = "HyporheicTools.cli.main:main"
 
 [tool.setuptools]
-# src/ layout
 package-dir = { "" = "src" }
 include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["HyporheicTool*"]
+include = ["HyporheicTools*"]
 
 [tool.setuptools.package-data]
-# Include non-Python assets inside the wheel so users get the Pro toolbox & symbology.
-HyporheicTool = [
+# Ship your toolbox & assets inside the wheel.
+HyporheicTools = [
   "bin/modflow/**",
-  "inputs.yaml",
-  "esri/toolboxes/HyporheicTool.pyt",
+  "data/templates/inputs_TEMPLATE.yaml",
+  "esri/toolboxes/Hyporheic_Toolbox.pyt",
   "esri/symbology/*.lyrx",
-  "esri/help/gp/toolboxes/HyporheicTool.xml"
+  "esri/help/gp/toolboxes/Hyporheic_Toolbox.xml"
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
-markers = [
-  "slow: marks tests as slow (use RUN_SLOW=1 or -m slow to run)"
-]
+markers = ["slow: marks tests as slow (use RUN_SLOW=1 or -m slow to run)"]
 
-# Optional: code style / tooling (tweak to taste)
 [tool.black]
 line-length = 100
 target-version = ["py311"]

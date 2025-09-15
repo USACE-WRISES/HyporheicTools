@@ -377,6 +377,59 @@ def compute_boundary_heads_from_profile(
 
     return heads_for_cells, head_f0, head_f1
 
+# def compile_chd_data(
+#     river_cells: list[tuple[int, int, int, float]],
+#     left_cells_0: list[tuple[int, int, int]], left_heads: list[float],
+#     right_cells_0: list[tuple[int, int, int]], right_heads: list[float],
+#     up_cells_0: list[tuple[int, int, int]], up_heads: list[float],
+#     down_cells_0: list[tuple[int, int, int]], down_heads: list[float],
+#     *,
+#     nlay: int = 1,
+#     copy_boundary_heads_to_all_layers: bool = True,
+# ) -> tuple[list[list[float]], int, int]:
+#     """
+#     Build CHD stress period data.
+
+#     Changes:
+#     --------
+#     - Boundary heads (left/right/up/down) are **copied down all layers** when
+#       copy_boundary_heads_to_all_layers=True (constant head with depth).
+#     - River cells remain on the top layer only (as before).
+#     """
+#     chd_data: list[list[float]] = []
+#     unique: set[tuple[int, int, int]] = set()
+#     dupes: set[tuple[int, int, int]] = set()
+
+#     # River cells (top layer only; unchanged)
+#     for (k, j, i, head) in river_cells:
+#         if (k, j, i) not in unique:
+#             chd_data.append([k, j, i, float(head)])
+#             unique.add((k, j, i))
+#         else:
+#             dupes.add((k, j, i))
+
+#     def _add_boundary(cells0, heads0):
+#         for idx, (_k0, j, i) in enumerate(cells0):
+#             head_val = float(heads0[idx])
+#             if copy_boundary_heads_to_all_layers and nlay and nlay > 1:
+#                 ks = range(nlay)
+#             else:
+#                 ks = (0,)
+#             for k in ks:
+#                 key = (int(k), int(j), int(i))
+#                 if key not in unique:
+#                     chd_data.append([int(k), int(j), int(i), head_val])
+#                     unique.add(key)
+#                 else:
+#                     dupes.add(key)
+
+#     _add_boundary(left_cells_0, left_heads)
+#     _add_boundary(right_cells_0, right_heads)
+#     _add_boundary(up_cells_0, up_heads)
+#     _add_boundary(down_cells_0, down_heads)
+
+#     return chd_data, len(unique), len(dupes)
+
 def compile_chd_data(
     river_cells: list[tuple[int, int, int, float]],
     left_cells_0: list[tuple[int, int, int]], left_heads: list[float],
@@ -388,33 +441,33 @@ def compile_chd_data(
     copy_boundary_heads_to_all_layers: bool = True,
 ) -> tuple[list[list[float]], int, int]:
     """
-    Build CHD stress period data.
+    Build CHD stress period data as a *flat list* of [k, j, i, head] rows.
+    - River cells are included on the *top* layer only (k as provided, usually 0).
+    - Side boundaries (left/right/up/down) can be copied to all layers when
+      `copy_boundary_heads_to_all_layers=True`.
 
-    Changes:
-    --------
-    - Boundary heads (left/right/up/down) are **copied down all layers** when
-      copy_boundary_heads_to_all_layers=True (constant head with depth).
-    - River cells remain on the top layer only (as before).
+    IMPORTANT (Option B):
+    - We do *not* set IFACE here. In `build_gwf_model(...)` we split the CHD
+      into two packages and set IFACE=6 **only** for the river package.
     """
     chd_data: list[list[float]] = []
     unique: set[tuple[int, int, int]] = set()
     dupes: set[tuple[int, int, int]] = set()
 
-    # River cells (top layer only; unchanged)
+    # 1) River (top layer only)
     for (k, j, i, head) in river_cells:
-        if (k, j, i) not in unique:
-            chd_data.append([k, j, i, float(head)])
-            unique.add((k, j, i))
+        key = (int(k), int(j), int(i))
+        if key not in unique:
+            chd_data.append([int(k), int(j), int(i), float(head)])
+            unique.add(key)
         else:
-            dupes.add((k, j, i))
+            dupes.add(key)
 
+    # 2) Side boundaries
     def _add_boundary(cells0, heads0):
         for idx, (_k0, j, i) in enumerate(cells0):
             head_val = float(heads0[idx])
-            if copy_boundary_heads_to_all_layers and nlay and nlay > 1:
-                ks = range(nlay)
-            else:
-                ks = (0,)
+            ks = range(nlay) if (copy_boundary_heads_to_all_layers and nlay and nlay > 1) else (0,)
             for k in ks:
                 key = (int(k), int(j), int(i))
                 if key not in unique:
@@ -423,10 +476,10 @@ def compile_chd_data(
                 else:
                     dupes.add(key)
 
-    _add_boundary(left_cells_0, left_heads)
+    _add_boundary(left_cells_0,  left_heads)
     _add_boundary(right_cells_0, right_heads)
-    _add_boundary(up_cells_0, up_heads)
-    _add_boundary(down_cells_0, down_heads)
+    _add_boundary(up_cells_0,    up_heads)
+    _add_boundary(down_cells_0,  down_heads)
 
     return chd_data, len(unique), len(dupes)
 
@@ -848,22 +901,165 @@ def extract_river_cells(df: pd.DataFrame, idomain: np.ndarray) -> list[tuple[int
 # ----------------------------
 # Step 6 – Build & run models
 # ----------------------------
-def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarray) -> tuple[flopy.mf6.MFSimulation, flopy.mf6.ModflowGwf]:
+# def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarray) -> tuple[flopy.mf6.MFSimulation, flopy.mf6.ModflowGwf]:
+#     """
+#     Build a steady-state GWF model. Writes large arrays as external *binary* files for faster I/O:
+#       - DIS: top, botm, (idomain if present)
+#       - IC : strt
+#       - NPF: k (horizontal K) and k33 (vertical K)  <-- added
+
+#     Notes
+#     -----
+#     * If KH/KV polygons are not provided, uniform cfg.kh/cfg.kv are expanded to full
+#       (nlay, nrow, ncol) arrays so that NPF K/K33 are still written as binary per-layer files.
+#     """
+#     if idomain.shape != (cfg.nlay, cfg.nrow, cfg.ncol):
+#         raise ValueError("`idomain` dimensions do not match cfg grid.")
+
+#     # exe_name: use explicit path if provided, otherwise rely on 'mf6' on PATH
+#     mf6_exe = str(cfg.md6_exe_path) if getattr(cfg, "md6_exe_path", None) else "mf6"
+
+#     sim = flopy.mf6.MFSimulation(
+#         sim_name=cfg.sim_name,
+#         exe_name=mf6_exe,
+#         sim_ws=str(cfg.gwf_ws),
+#     )
+#     flopy.mf6.ModflowTdis(
+#         sim, time_units=cfg.time_units.upper(),
+#         nper=cfg.nper, perioddata=[(cfg.perlen, cfg.nstp, cfg.tsmult)]
+#     )
+#     gwf = flopy.mf6.ModflowGwf(sim, modelname=cfg.gwf_name, save_flows=True)
+
+#     # DIS
+#     flopy.mf6.ModflowGwfdis(
+#         gwf, nlay=cfg.nlay, nrow=cfg.nrow, ncol=cfg.ncol,
+#         delr=cfg.cell_size_x, delc=cfg.cell_size_y,
+#         top=cfg.tops[0], botm=cfg.botm, idomain=idomain,
+#         xorigin=cfg.xmin, yorigin=cfg.ymin
+#     )
+#     # Keep CRS only; DIS.xorigin/yorigin control placement.
+#     gwf.modelgrid.crs = cfg.raster_crs
+
+#     # IC
+#     strt = np.full((cfg.nlay, cfg.nrow, cfg.ncol), cfg.bed_elevation, dtype=float)
+#     flopy.mf6.ModflowGwfic(gwf, strt=strt)
+
+#     # Build KH / KV arrays (from polygons if present; else uniform)
+#     k_array, k33_array = _kh_arrays_from_polygon(cfg, gwf, idomain)
+#     if k_array is None:
+#         k_array = np.full((cfg.nlay, cfg.nrow, cfg.ncol), float(cfg.kh), dtype=float)
+#     if k33_array is None:
+#         k33_array = np.full((cfg.nlay, cfg.nrow, cfg.ncol), float(cfg.kv), dtype=float)
+
+#     # NPF (pass arrays; we'll also set external binary records below)
+#     flopy.mf6.ModflowGwfnpf(
+#         gwf,
+#         icelltype=2,
+#         k=k_array,
+#         k33=k33_array,
+#         save_flows=True,
+#         save_saturation=True,
+#         save_specific_discharge=True,
+#     )
+
+#     # # CHD
+#     # if chd_data:
+#     #     flopy.mf6.ModflowGwfchd(
+#     #         gwf, maxbound=len(chd_data),
+#     #         stress_period_data={0: chd_data}, save_flows=True
+#     #     )
+
+#     # CHD (per-cell IFACE provided)
+#     if chd_data:
+#         flopy.mf6.ModflowGwfchd(
+#             gwf,
+#             maxbound=len(chd_data),
+#             stress_period_data={0: chd_data},  # list of ((k,j,i), head, IFACE)
+#             save_flows=True,
+#             auxiliary=["IFACE"],
+#         )
+
+#     # OC
+#     flopy.mf6.ModflowGwfoc(
+#         gwf,
+#         saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
+#         head_filerecord=[cfg.headfile],
+#         budget_filerecord=[cfg.budgetfile],
+#         printrecord=[("HEAD", "LAST")]
+#     )
+
+#     # IMS
+#     flopy.mf6.ModflowIms(
+#         sim, print_option="SUMMARY",
+#         outer_dvclose=1e-4, outer_maximum=200,
+#         inner_maximum=500, inner_dvclose=1e-4, rcloserecord=1e-4,
+#         linear_acceleration="BICGSTAB", relaxation_factor=0.97
+#     )
+
+#     # ---------- Write big arrays as external binary ----------
+#     external_dir = Path(gwf.model_ws) / "arrays"
+#     external_dir.mkdir(exist_ok=True)
+
+#     dis = gwf.get_package("DIS")
+#     ic = gwf.get_package("IC")
+#     npf = gwf.get_package("NPF")
+
+#     def _layered_records(array: np.ndarray, basename: str) -> list[dict]:
+#         """Build FloPy 'set_record' entries for a 3D array (nlay,nrow,ncol), one file per layer."""
+#         return [{
+#             "filename": str(PurePath("arrays") / f"{basename}_L{lay + 1}.bin"),
+#             "binary": True,
+#             "data": np.asarray(array[lay]),
+#             "iprn": 0,
+#             "factor": 1.0,
+#         } for lay in range(array.shape[0])]
+
+#     # DIS: top/botm/idomain → binary (as you had)
+#     if dis is not None:
+#         dis.top.set_record({
+#             "filename": str(PurePath("arrays") / "top.bin"),
+#             "binary": True, "data": np.asarray(dis.top.array), "iprn": 0, "factor": 1.0
+#         })
+#         dis.botm.set_record(_layered_records(dis.botm.array, "botm"))
+#         if hasattr(dis, "idomain") and dis.idomain.array is not None:
+#             dis.idomain.set_record(_layered_records(dis.idomain.array, "idomain"))
+
+#     # IC: strt → binary (as you had)
+#     if ic is not None:
+#         ic.strt.set_record(_layered_records(ic.strt.array, "strt"))
+
+#     # NPF: NEW — write k and k33 per layer as binary
+#     # Ensure we use the arrays we constructed above (k_array/k33_array)
+#     if npf is not None:
+#         # Horizontal K
+#         if getattr(npf, "k", None) is not None:
+#             npf.k.set_record(_layered_records(k_array, "k"))
+#         # Vertical K
+#         if getattr(npf, "k33", None) is not None:
+#             npf.k33.set_record(_layered_records(k33_array, "k33"))
+
+#     return sim, gwf
+def build_gwf_model(
+    cfg,
+    chd_data: Sequence[Sequence[float]],
+    idomain: np.ndarray,
+    river_cells: list[tuple[int, int, int, float]] | None = None,
+) -> tuple[flopy.mf6.MFSimulation, flopy.mf6.ModflowGwf]:
     """
-    Build a steady-state GWF model. Writes large arrays as external *binary* files for faster I/O:
-      - DIS: top, botm, (idomain if present)
-      - IC : strt
-      - NPF: k (horizontal K) and k33 (vertical K)  <-- added
+    Build a steady-state GWF model. Writes big arrays externally and
+    installs CHD as **two packages** (Option B):
+
+      • CHD_RIVER : river/top-surface cells with IFACE=6 (top) via auxiliary.
+      • CHD_SIDES : all other CHD cells (no IFACE supplied).
 
     Notes
     -----
-    * If KH/KV polygons are not provided, uniform cfg.kh/cfg.kv are expanded to full
-      (nlay, nrow, ncol) arrays so that NPF K/K33 are still written as binary per-layer files.
+    * 'chd_data' must be plain rows [k, j, i, head].
+    * 'river_cells' must be (k, j, i, stage). Typically k=0 for top layer.
     """
     if idomain.shape != (cfg.nlay, cfg.nrow, cfg.ncol):
         raise ValueError("`idomain` dimensions do not match cfg grid.")
 
-    # exe_name: use explicit path if provided, otherwise rely on 'mf6' on PATH
     mf6_exe = str(cfg.md6_exe_path) if getattr(cfg, "md6_exe_path", None) else "mf6"
 
     sim = flopy.mf6.MFSimulation(
@@ -884,21 +1080,18 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
         top=cfg.tops[0], botm=cfg.botm, idomain=idomain,
         xorigin=cfg.xmin, yorigin=cfg.ymin
     )
-    # Keep CRS only; DIS.xorigin/yorigin control placement.
     gwf.modelgrid.crs = cfg.raster_crs
 
     # IC
     strt = np.full((cfg.nlay, cfg.nrow, cfg.ncol), cfg.bed_elevation, dtype=float)
     flopy.mf6.ModflowGwfic(gwf, strt=strt)
 
-    # Build KH / KV arrays (from polygons if present; else uniform)
+    # NPF
     k_array, k33_array = _kh_arrays_from_polygon(cfg, gwf, idomain)
     if k_array is None:
         k_array = np.full((cfg.nlay, cfg.nrow, cfg.ncol), float(cfg.kh), dtype=float)
     if k33_array is None:
         k33_array = np.full((cfg.nlay, cfg.nrow, cfg.ncol), float(cfg.kv), dtype=float)
-
-    # NPF (pass arrays; we'll also set external binary records below)
     flopy.mf6.ModflowGwfnpf(
         gwf,
         icelltype=2,
@@ -909,11 +1102,43 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
         save_specific_discharge=True,
     )
 
-    # CHD
+    # === CHD (Option B): split into "river with IFACE" vs "sides without IFACE" ===
+    spd_river: list[tuple[tuple[int, int, int], float, int]] = []
+    spd_sides: list[tuple[int, int, int, float]] = []
+
+    river_set = {(int(k), int(j), int(i)) for (k, j, i, _stage) in (river_cells or [])}
+
+    # Build river CHD from 'river_cells' (IFACE = 6 = top)
+    if river_cells:
+        for (k, j, i, stage) in river_cells:
+            spd_river.append(((int(k), int(j), int(i)), float(stage), 6))
+
+    # Sides = all CHD rows that are not river
     if chd_data:
+        for rec in chd_data:
+            k, j, i, head = int(rec[0]), int(rec[1]), int(rec[2]), float(rec[3])
+            if (k, j, i) in river_set:
+                # skip; already handled in spd_river (ensures no duplicates)
+                continue
+            spd_sides.append((k, j, i, head))
+
+    # Install the two packages
+    if spd_river:
         flopy.mf6.ModflowGwfchd(
-            gwf, maxbound=len(chd_data),
-            stress_period_data={0: chd_data}, save_flows=True
+            gwf,
+            maxbound=len(spd_river),
+            stress_period_data={0: spd_river},  # ((k,j,i), head, IFACE)
+            auxiliary=["IFACE"],                 # expose IFACE
+            save_flows=True,
+            pname="CHD_RIVER",
+        )
+    if spd_sides:
+        flopy.mf6.ModflowGwfchd(
+            gwf,
+            maxbound=len(spd_sides),
+            stress_period_data={0: spd_sides},  # (k, j, i, head) tuples
+            save_flows=True,
+            pname="CHD_SIDES",
         )
 
     # OC
@@ -933,7 +1158,7 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
         linear_acceleration="BICGSTAB", relaxation_factor=0.97
     )
 
-    # ---------- Write big arrays as external binary ----------
+    # ---------- Externalize large arrays (as in your original) ----------
     external_dir = Path(gwf.model_ws) / "arrays"
     external_dir.mkdir(exist_ok=True)
 
@@ -942,7 +1167,6 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
     npf = gwf.get_package("NPF")
 
     def _layered_records(array: np.ndarray, basename: str) -> list[dict]:
-        """Build FloPy 'set_record' entries for a 3D array (nlay,nrow,ncol), one file per layer."""
         return [{
             "filename": str(PurePath("arrays") / f"{basename}_L{lay + 1}.bin"),
             "binary": True,
@@ -951,7 +1175,6 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
             "factor": 1.0,
         } for lay in range(array.shape[0])]
 
-    # DIS: top/botm/idomain → binary (as you had)
     if dis is not None:
         dis.top.set_record({
             "filename": str(PurePath("arrays") / "top.bin"),
@@ -961,24 +1184,16 @@ def build_gwf_model(cfg, chd_data: Sequence[Sequence[float]], idomain: np.ndarra
         if hasattr(dis, "idomain") and dis.idomain.array is not None:
             dis.idomain.set_record(_layered_records(dis.idomain.array, "idomain"))
 
-    # IC: strt → binary (as you had)
     if ic is not None:
         ic.strt.set_record(_layered_records(ic.strt.array, "strt"))
 
-    # NPF: NEW — write k and k33 per layer as binary
-    # Ensure we use the arrays we constructed above (k_array/k33_array)
     if npf is not None:
-        # Horizontal K
         if getattr(npf, "k", None) is not None:
             npf.k.set_record(_layered_records(k_array, "k"))
-        # Vertical K
         if getattr(npf, "k33", None) is not None:
             npf.k33.set_record(_layered_records(k33_array, "k33"))
 
     return sim, gwf
-
-
-
 
 
 def _kh_arrays_from_polygon(cfg, gwf, idomain: np.ndarray) -> tuple[np.ndarray | None, np.ndarray | None]:
@@ -1112,22 +1327,339 @@ def _kh_arrays_from_polygon(cfg, gwf, idomain: np.ndarray) -> tuple[np.ndarray |
     return k, k33
 
 
-def build_particle_models(sim_name: str, gwf: flopy.mf6.ModflowGwf, river_cells: list[tuple[int, int, int]], *, mp7_ws: Path | str | None = None, exe_path: str | Path | None = None) -> tuple[Modpath7, Modpath7]:
+# def build_particle_models(sim_name: str, gwf: flopy.mf6.ModflowGwf, river_cells: list[tuple[int, int, int]], *, mp7_ws: Path | str | None = None, exe_path: str | Path | None = None) -> tuple[Modpath7, Modpath7]:
+#     mp7_ws = Path(mp7_ws or (Path(gwf.simulation.sim_path).parent / "mp7_workspace")).absolute()
+#     mp7_ws.mkdir(exist_ok=True)
+#     exe_path = str(exe_path or "mp7")
+
+#     def _make(direction: str) -> Modpath7:
+#         mp = Modpath7.create_mp7(
+#             modelname=f"{sim_name}_mp_{direction}", trackdir=direction,
+#             flowmodel=gwf, model_ws=mp7_ws, exe_name=str(exe_path),
+#             rowcelldivisions=1, columncelldivisions=1, layercelldivisions=1
+#         )
+#         partlocs = [(k, i, j) for (k, i, j, *_) in river_cells]
+#         pg = ParticleGroup(particledata=ParticleData(partlocs, structured=True, drape=0))
+#         mpsim = mp.get_package("MPSIM")
+#         mpsim.particlegroups.clear()
+#         mpsim.particlegroups.append(pg)
+#         # --- NEW: stop in weak sinks; keep passing through weak sources (typical forward-tracking choice)
+#         mpsim.weaksinkoption = "stop_at"         # instead of the create_mp7 default "pass_through"
+#         mpsim.weaksourceoption = "pass_through"  # default is "pass_through"... but can also set "stop_at" if you want to stop when water enters from above
+
+#         # --- NEW: set defaultiface so that CHD cells are treated as open boundaries on top face
+#         #       (this is typical for MODPATH forward tracking from CHD)
+#         #And tell MODPATH that CHD fluxes act through the top face (if that’s how you conceptualize the river/water table):
+#         mpbas = mp.get_package("MPBAS")
+#         mpbas.defaultiface = dict(mpbas.defaultiface or {})
+#         mpbas.defaultiface["CHD"] = 6   # 6 = top face in MODPATH
+#         mpbas.defaultifacecount = len(mpbas.defaultiface)
+#         return mp
+
+#     return _make("forward"), _make("backward")
+
+
+# def build_particle_models(
+#     sim_name: str,
+#     gwf: flopy.mf6.ModflowGwf,
+#     river_cells: list[tuple[int, int, int, float]],
+#     *,
+#     mp7_ws: Path | str | None = None,
+#     exe_path: str | Path | None = None
+# ) -> tuple[Modpath7, Modpath7]:
+#     """
+#     Create MODPATH 7 forward/backward models with particles released:
+#       - at the water surface elevation (WSE) per river cell,
+#       - in the TOPMOST model layer that contains that WSE,
+#       - centered in x/y within the host cell,
+#       - using localx/localy/localz arrays (so partlocs remain (k, irow, icol)).
+#     """
+#     mp7_ws = Path(mp7_ws or (Path(gwf.simulation.sim_path).parent / "mp7_workspace")).absolute()
+#     mp7_ws.mkdir(parents=True, exist_ok=True)
+#     exe_path = str(exe_path or "mp7")
+
+#     # Grid geometry
+#     dis = gwf.get_package("DIS")
+#     top2d  = np.asarray(dis.top.array,  dtype=float)        # (nrow, ncol)
+#     botm3d = np.asarray(dis.botm.array, dtype=float)        # (nlay, nrow, ncol)
+#     idomain = np.asarray(dis.idomain.array, dtype=int) if hasattr(dis, "idomain") else None
+#     nlay, nrow, ncol = botm3d.shape
+
+#     TOL = 1.0e-6  # numeric tolerance
+
+#     def _host_layer_for_stage(irow: int, icol: int, stage: float) -> tuple[int, float, float]:
+#         """
+#         Return (k, lay_top, lay_bot) for the TOPMOST layer whose vertical interval
+#         contains 'stage'. If none:
+#           - if stage > top: use k=0 (top layer);
+#           - if stage < bottom: use bottom layer.
+#         """
+#         # scan from top-down to get the *first* intersecting layer
+#         for k in range(nlay):
+#             lay_top = top2d[irow, icol] if k == 0 else botm3d[k - 1, irow, icol]
+#             lay_bot = botm3d[k, irow, icol]
+#             if (stage <= lay_top + TOL) and (stage >= lay_bot - TOL):
+#                 if idomain is None or idomain[k, irow, icol] == 1:
+#                     return k, lay_top, lay_bot
+
+#         # above model top → top layer
+#         k = 0
+#         lay_top = top2d[irow, icol]
+#         lay_bot = botm3d[0, irow, icol]
+#         if stage > lay_top + TOL:
+#             return k, lay_top, lay_bot
+
+#         # below model bottom → bottom layer
+#         k = nlay - 1
+#         lay_bot = botm3d[-1, irow, icol]
+#         lay_top = botm3d[-2, irow, icol] if nlay > 1 else top2d[irow, icol]
+#         return k, lay_top, lay_bot
+
+#     def _make(direction: str) -> Modpath7:
+#         mp = Modpath7.create_mp7(
+#             modelname=f"{sim_name}_mp_{direction}",
+#             trackdir=direction,
+#             flowmodel=gwf,
+#             model_ws=mp7_ws,
+#             exe_name=exe_path,
+#             rowcelldivisions=1,
+#             columncelldivisions=1,
+#             layercelldivisions=1,
+#         )
+
+#         # Build (k,irow,icol) + local coordinates arrays
+#         partlocs: list[tuple[int, int, int]] = []
+#         localx: list[float] = []
+#         localy: list[float] = []
+#         localz: list[float] = []
+
+#         for (_k_ignore, irow, icol, stage) in river_cells:  # river_cells are (k, row, col, stage)
+#             if not (0 <= irow < nrow and 0 <= icol < ncol):
+#                 continue
+#             if stage is None or not np.isfinite(stage):
+#                 continue
+#             if idomain is not None and idomain[0, irow, icol] != 1:
+#                 # if the top cell is inactive, we'll still try to place in an active host layer below
+#                 pass
+
+#             k_host, lay_top, lay_bot = _host_layer_for_stage(irow, icol, float(stage))
+#             if idomain is not None and idomain[k_host, irow, icol] != 1:
+#                 # skip if the host cell is inactive
+#                 continue
+
+#             dz = max(lay_top - lay_bot, TOL)
+#             zloc = float(np.clip((stage - lay_bot) / dz, 0.0, 1.0))  # 0=bottom, 1=top
+#             xloc = 0.5
+#             yloc = 0.5
+
+#             partlocs.append((int(k_host), int(irow), int(icol)))  # NOTE: (k, irow, icol)
+#             localx.append(xloc)
+#             localy.append(yloc)
+#             localz.append(zloc)
+
+#         # Fallback if none qualified: drop in top layer centers
+#         if not partlocs:
+#             for (_k_ignore, irow, icol, _stage) in river_cells:
+#                 if 0 <= irow < nrow and 0 <= icol < ncol and (idomain is None or idomain[0, irow, icol] == 1):
+#                     partlocs.append((0, int(irow), int(icol)))
+#                     localx.append(0.5); localy.append(0.5); localz.append(1.0)
+
+#         pg = ParticleGroup(
+#             particledata=ParticleData(
+#                 partlocs,
+#                 structured=True,
+#                 localx=localx,
+#                 localy=localy,
+#                 localz=localz,
+#                 drape=0,             # do NOT drape to the cell top; we already set the WSE z
+#             )
+#         )
+
+#         mpsim = mp.get_package("MPSIM")
+#         mpsim.particlegroups.clear()
+#         mpsim.particlegroups.append(pg)
+
+#         mpsim.weaksinkoption = "2"         #2 is stop_at, 1 is passthrough instead of the create_mp7 default "pass_through"
+#         mpsim.weaksourceoption = "2"  #2 is stop_at, 1 is passthrough default is "pass_through"... but can also set "stop_at" if you want to stop when water enters from above
+
+#         # --- NEW: stop in weak sinks; keep passing through weak sources (typical forward-tracking choice)
+#         # mpsim.weaksinkoption = "stop_at"         # instead of the create_mp7 default "pass_through"
+#         # mpsim.weaksourceoption = "stop_at"  # default is "pass_through"... but can also set "stop_at" if you want to stop when water enters from above
+
+#         # # --- NEW: set defaultiface so that CHD cells are treated as open boundaries on top face
+#         # #       (this is typical for MODPATH forward tracking from CHD)
+#         # #And tell MODPATH that CHD fluxes act through the top face (if that’s how you conceptualize the river/water table):
+#         # mpbas = mp.get_package("MPBAS")
+#         # mpbas.defaultiface = dict(mpbas.defaultiface or {})
+#         # mpbas.defaultiface["CHD"] = 6   # 6 = top face in MODPATH
+#         # mpbas.defaultifacecount = len(mpbas.defaultiface)
+#         return mp
+
+#     return _make("forward"), _make("backward")
+
+def build_particle_models(
+    sim_name: str,
+    gwf: "flopy.mf6.ModflowGwf",
+    river_cells: list[tuple[int, int, int, float]],
+    *,
+    mp7_ws: Path | str | None = None,
+    exe_path: str | Path | None = None,
+    nx: int = 1,                  # number of particles across X per river cell
+    ny: int = 1,                  # number of particles across Y per river cell
+    place_wse: bool = True,       # drop a particle at the water table (WSE)
+    place_center: bool = False,   # drop a particle at zloc=0.5 (only if WSE >= 0.5 in that cell)
+    place_bottom: bool = False,   # drop a particle at zloc=0.0 (cell bottom)
+) -> tuple[Modpath7, Modpath7]:
+    """
+    Build MODPATH 7 forward/backward models with particles released in the **topmost
+    wet cell** (the topmost layer that contains the river stage), using an (nx × ny)
+    evenly spaced grid in local X/Y for each river cell.
+
+    Vertical placement per XY point (toggles):
+      - place_wse=True     → particle at the water table (WSE) inside host cell.
+      - place_center=True  → particle at zloc=0.5 **only if** WSE zloc >= 0.5 in that cell; otherwise skipped.
+      - place_bottom=True  → particle at zloc=0.0 (cell bottom).
+
+    Notes
+    -----
+    - If all three toggles are False, we fall back to place_wse=True.
+    - We do NOT set mpbas.defaultiface; CHD IFACEs are carried in the CHD package.
+    - By default we leave weak source/sink behavior as pass_through (more stable).
+    """
+    # Ensure at least one vertical option
+    if not (place_wse or place_center or place_bottom):
+        place_wse = True
+
+    # Sanitize counts
+    nx = max(1, int(nx))
+    ny = max(1, int(ny))
+
     mp7_ws = Path(mp7_ws or (Path(gwf.simulation.sim_path).parent / "mp7_workspace")).absolute()
-    mp7_ws.mkdir(exist_ok=True)
+    mp7_ws.mkdir(parents=True, exist_ok=True)
     exe_path = str(exe_path or "mp7")
+
+    # Grid geometry
+    dis = gwf.get_package("DIS")
+    top2d  = np.asarray(dis.top.array,  dtype=float)        # (nrow, ncol)
+    botm3d = np.asarray(dis.botm.array, dtype=float)        # (nlay, nrow, ncol)
+    idomain = np.asarray(dis.idomain.array, dtype=int) if hasattr(dis, "idomain") else None
+    nlay, nrow, ncol = botm3d.shape
+
+    TOL = 1.0e-6
+    TOL_CENTER = 1.0e-9
+
+    def _host_layer_for_stage(irow: int, icol: int, stage: float) -> tuple[int, float, float]:
+        """
+        Return (k, lay_top, lay_bot) for the TOPMOST layer whose vertical interval
+        contains 'stage'. If stage is above the column, clamp to top layer; if below,
+        clamp to bottom layer.
+        """
+        for k in range(nlay):
+            lay_top = top2d[irow, icol] if k == 0 else botm3d[k - 1, irow, icol]
+            lay_bot = botm3d[k, irow, icol]
+            if (stage <= lay_top + TOL) and (stage >= lay_bot - TOL):
+                if idomain is None or idomain[k, irow, icol] == 1:
+                    return k, lay_top, lay_bot
+        if stage > (top2d[irow, icol] + TOL):
+            return 0, top2d[irow, icol], botm3d[0, irow, icol]
+        k = nlay - 1
+        return k, (botm3d[-2, irow, icol] if nlay > 1 else top2d[irow, icol]), botm3d[-1, irow, icol]
+
+    # Precompute evenly spaced local coordinates inside a cell (bin midpoints)
+    xgrid = ((np.arange(nx, dtype=float) + 0.5) / float(nx)).tolist()
+    ygrid = ((np.arange(ny, dtype=float) + 0.5) / float(ny)).tolist()
 
     def _make(direction: str) -> Modpath7:
         mp = Modpath7.create_mp7(
-            modelname=f"{sim_name}_mp_{direction}", trackdir=direction,
-            flowmodel=gwf, model_ws=mp7_ws, exe_name=str(exe_path),
-            rowcelldivisions=1, columncelldivisions=1, layercelldivisions=1
+            modelname=f"{sim_name}_mp_{direction}",
+            trackdir=direction,
+            flowmodel=gwf,
+            model_ws=mp7_ws,
+            exe_name=exe_path,
+            rowcelldivisions=1,
+            columncelldivisions=1,
+            layercelldivisions=1,
         )
-        partlocs = [(k, i, j) for (k, i, j, *_) in river_cells]
-        pg = ParticleGroup(particledata=ParticleData(partlocs, structured=True, drape=0))
+
+        partlocs: list[tuple[int, int, int]] = []
+        localx: list[float] = []
+        localy: list[float] = []
+        localz: list[float] = []
+
+        for (_k_ignore, irow, icol, stage) in river_cells:
+            if not (0 <= irow < nrow and 0 <= icol < ncol):
+                continue
+            if stage is None or not np.isfinite(stage):
+                continue
+
+            k_host, lay_top, lay_bot = _host_layer_for_stage(irow, icol, float(stage))
+            if idomain is not None and idomain[k_host, irow, icol] != 1:
+                continue
+
+            dz = max(lay_top - lay_bot, TOL)
+            zloc_wse = float(np.clip((stage - lay_bot) / dz, 0.0, 1.0))
+
+            # Assemble the vertical positions requested for *this* cell
+            z_candidates: list[float] = []
+            if place_wse:
+                z_candidates.append(zloc_wse)
+            if place_center and (zloc_wse + TOL_CENTER >= 0.5):
+                z_candidates.append(0.5)
+            if place_bottom:
+                z_candidates.append(0.0)
+
+            if not z_candidates:
+                # All requested options were skipped (e.g., only center requested but WSE < center)
+                # Fall back to WSE in this cell to ensure at least one particle here.
+                z_candidates.append(zloc_wse)
+
+            # Create particles on the (nx × ny) XY grid at each requested Z
+            for yloc in ygrid:
+                for xloc in xgrid:
+                    for zloc in z_candidates:
+                        partlocs.append((int(k_host), int(irow), int(icol)))
+                        localx.append(float(xloc))
+                        localy.append(float(yloc))
+                        localz.append(float(zloc))
+
+        # Global fallback if nothing qualified at all
+        if not partlocs:
+            # Choose a reasonable fallback vertical list based on toggles
+            fallback_zs: list[float] = []
+            if place_wse:    fallback_zs.append(1.0)  # top face proxy
+            if place_center: fallback_zs.append(0.5)
+            if place_bottom: fallback_zs.append(0.0)
+            if not fallback_zs:
+                fallback_zs = [1.0]  # at least something
+
+            for (_k_ignore, irow, icol, _stage) in river_cells:
+                if 0 <= irow < nrow and 0 <= icol < ncol and (idomain is None or idomain[0, irow, icol] == 1):
+                    for yloc in ygrid:
+                        for xloc in xgrid:
+                            for zloc in fallback_zs:
+                                partlocs.append((0, int(irow), int(icol)))
+                                localx.append(float(xloc))
+                                localy.append(float(yloc))
+                                localz.append(float(zloc))
+
+        # Build particle group with local coordinates
+        pg = ParticleGroup(
+            particledata=ParticleData(
+                partlocs,
+                structured=True,
+                localx=localx,
+                localy=localy,
+                localz=localz,
+                drape=0,  # do not drape; we set z explicitly
+            )
+        )
         mpsim = mp.get_package("MPSIM")
         mpsim.particlegroups.clear()
         mpsim.particlegroups.append(pg)
+
+        mpsim.weaksinkoption = "2"    # 2 is stop at
+        mpsim.weaksourceoption = "2"  # 2 is stop at, 1 is pass through
+
         return mp
 
     return _make("forward"), _make("backward")
@@ -1570,6 +2102,8 @@ def process_and_export_modpath7_results(
     export_pngs: bool = True,
     plots_dpi: int = 300,
     plots_show: bool = False,
+    budget_term: str = "CHD",             # e.g., "FLOW-JA-FACE", "CHD", "RIV", etc.
+    budget_kstpkper: tuple[int, int] | None = None,  # e.g., (kstp, kper). If None, use last.
 ) -> dict:
     """
     Export full MODPATH7 results (tables, vectors, figures) and write
@@ -1701,12 +2235,13 @@ def process_and_export_modpath7_results(
         raise ValueError("`bed_elevation` is required to filter endpoints.")
 
     # filter endpoints (kept)
+    Z_TOL = 1.0e-6
     filtered_particles = [
         ep for ep in endpoints
-        if (ep["z"] >= bed_elevation)
-        and ((ep["x"], ep["y"]) != (ep["x0"], ep["y0"]))
-        and (abs(ep["z"] - ep["z0"]) > 0)
+        if (float(ep["z"]) >= float(bed_elevation) - Z_TOL)
+        and (abs(float(ep["z"]) - float(ep["z0"])) > Z_TOL)
     ]
+    # NOTE: We intentionally DO NOT require (x,y) to change; vertical-only paths are valid.
     if len(filtered_particles) == 0:
         raise RuntimeError("No particles left after endpoint filtering.")
     filtered_particle_ids = [int(ep["particleid"]) for ep in filtered_particles]
@@ -1927,7 +2462,8 @@ def process_and_export_modpath7_results(
 
     # ---------- PARTICLE-LEVEL (revised head + gradient) ----------
     # True start/end positions and heads for each particle
-    g_sorted = df_long.sort_values(["particleid", "time"])
+    #g_sorted = df_long.sort_values(["particleid", "time"])
+    g_sorted = df.sort_values(["particleid", "time"])
     first_pts = g_sorted.groupby("particleid").first().reset_index()
     last_pts  = g_sorted.groupby("particleid").last().reset_index()
 
@@ -1951,8 +2487,18 @@ def process_and_export_modpath7_results(
     })
 
     # Starting/ending heads from actual first/last records
-    heads_first = g_sorted.groupby("particleid")["head"].first().reset_index(name="starting_hydraulic_head")
-    heads_last  = g_sorted.groupby("particleid")["head"].last().reset_index(name="ending_hydraulic_head")
+    # heads_first = g_sorted.groupby("particleid")["head"].first().reset_index(name="starting_hydraulic_head")
+    # heads_last  = g_sorted.groupby("particleid")["head"].last().reset_index(name="ending_hydraulic_head")
+    heads_first = (
+        g_sorted.groupby("particleid", as_index=False)["head"]
+                .first()
+                .rename(columns={"head": "starting_hydraulic_head"})
+    )
+    heads_last = (
+        g_sorted.groupby("particleid", as_index=False)["head"]
+                .last()
+                .rename(columns={"head": "ending_hydraulic_head"})
+    )
 
     # Per-particle summaries kept from df_prc
     total_volume_available_along_path = df_prc.groupby("particleid")["total_volume_cubic_ft"].sum().reset_index()
@@ -2025,112 +2571,316 @@ def process_and_export_modpath7_results(
 
     # ---------------- Spatial exports (kept) ----------------
     # (points + 2D/3D lines) — identical to your previous version ...
-    # [snip unchanged spatial export code for brevity]
+    if any([export_shp, export_shp_wgs84, export_kml, export_kmz, export_gpkg, export_shp_3d]):
+        # points (cell centers)
+        custom_map_points = {
+            "row": "row", "col": "col",
+            "z_elevation": "zelev",
+            "hyporheic_volume_cubic_ft": "hypvol_ft",
+            "cell_residence_time_days": "cel_res_t",
+            "total_residence_time_days": "res_time",
+            "length_in_cell_ft": "Len_ft",
+            "total_length_ft": "tot_len_ft",
+            "particle_velocity_ft_per_day": "vel_ftday",
+            "flow_rate_cubic_ft_per_day": "flow_ftday",
+            "hydraulic_gradient": "hyd_grad",
+            "hydraulic_head": "hyd_head",
+            "starting_hydraulic_head": "head_strt",
+            "ending_hydraulic_head": "head_end",
+            "x_coord": "xcoord",
+            "y_coord": "ycoord",
+            "total_volume_cubic_ft": "tot_vol_ft",
+            "particleid": "particleid",
+        }
+        df_prc_short = df_prc[list(custom_map_points.keys())].rename(columns=custom_map_points)
+        points_geom = [Point(xy) for xy in zip(df_prc_short["xcoord"], df_prc_short["ycoord"])]
+        points_gdf = gpd.GeoDataFrame(df_prc_short, geometry=points_geom, crs=hec_crs)
+
+        # lines 2D
+        line_rows_2d, line_geoms_2d = [], []
+        for pid, g in df_long.sort_values(["particleid", "time"]).groupby("particleid", sort=False):
+            pts = list(zip(g["x_abs"].to_numpy(), g["y_abs"].to_numpy()))
+            if len(pts) > 1:
+                line_geoms_2d.append(LineString(pts))
+                line_rows_2d.append({"particleid": int(pid)})
+        lines_gdf_2d = gpd.GeoDataFrame(line_rows_2d, geometry=line_geoms_2d, crs=hec_crs)
+
+        # per-particle summary for lines (rename for clarity on attributes)
+        df_particle_summary_for_lines = df_particle_summary.rename(columns={
+            "z_elevation": "min_elevation_per_particle",
+            "total_residence_time_days": "total_residence_time_per_particle",
+            "total_length_ft": "total_length_per_particle",
+            "particle_velocity_ft_per_day": "average_particle_velocity_per_particle",
+            "flow_rate_cubic_ft_per_day": "average_flow_rate_per_particle",
+        })
+        summary_map = {
+            "particleid": "particleid",
+            "total_volume_cubic_ft": "tot_vol_ft",
+            "hyporheic_volume_cubic_ft": "hypvol_ft",
+            "starting_hydraulic_head": "head_strt",
+            "ending_hydraulic_head": "head_end",
+            "min_elevation_per_particle": "min_elev",
+            "total_residence_time_per_particle": "res_time",
+            "total_length_per_particle": "tot_len_ft",
+            "average_particle_velocity_per_particle": "vel_ftday",
+            "average_flow_rate_per_particle": "flow_ftday",
+            "hydraulic_gradient": "hyd_grad",
+            "x_cell_size_ft": "x_cell_ft",
+            "y_cell_size_ft": "y_cell_ft",
+            "z_cell_size_ft": "z_cell_ft",
+        }
+        df_particle_summary_short = df_particle_summary_for_lines.rename(columns=summary_map)
+
+        lines_gdf_2d = lines_gdf_2d.merge(df_particle_summary_short, on="particleid", how="left")
+
+        # 3D polylines
+        line_rows_3d, line_geoms_3d = [], []
+        for pid, g in df_long.sort_values(["particleid", "time"]).groupby("particleid", sort=False):
+            xs = g["x_abs"].to_numpy(float)
+            ys = g["y_abs"].to_numpy(float)
+            zs = g["z"].to_numpy(float)
+            valid = np.isfinite(xs) & np.isfinite(ys) & np.isfinite(zs)
+            if valid.sum() > 1:
+                line_geoms_3d.append(LineString(list(zip(xs[valid], ys[valid], zs[valid]))))
+                line_rows_3d.append({"particleid": int(pid)})
+        lines_gdf_3d = gpd.GeoDataFrame(line_rows_3d, geometry=line_geoms_3d, crs=hec_crs)
+        lines_gdf_3d = lines_gdf_3d.merge(df_particle_summary_short, on="particleid", how="left")
+
+        # write formats
+        if export_shp:
+            p_shp = output_folder / f"{direction}_hyporheic_points_HECRAS_CRS.shp"
+            l_shp = output_folder / f"{direction}_hyporheic_pathlines_2D_HECRAS_CRS.shp"
+            points_gdf.to_file(p_shp, driver="ESRI Shapefile")
+            lines_gdf_2d.to_file(l_shp, driver="ESRI Shapefile")
+            artifacts["points_shp"] = str(p_shp)
+            artifacts["lines_shp"] = str(l_shp)
+
+        # 3D shapefile
+        if export_shp_3d:
+            try:
+                shp3d = output_folder / f"{direction}_hyporheic_pathlines_3D_HECRAS_CRS.shp"
+                lines_gdf_3d.to_file(shp3d, driver="ESRI Shapefile")
+                artifacts["lines_shp_3d"] = str(shp3d)
+            except Exception as e:
+                print(f"[WARN] GeoPandas 3D shapefile export failed ({e}).")
+
+        if export_shp_wgs84:
+            points_wgs = points_gdf.to_crs(epsg=4326)
+            lines_wgs = lines_gdf_2d.to_crs(epsg=4326)
+            p_shp_wgs = output_folder / f"{direction}_hyporheic_points.shp"
+            l_shp_wgs = output_folder / f"{direction}_hyporheic_pathlines.shp"
+            points_wgs.to_file(p_shp_wgs, driver="ESRI Shapefile")
+            lines_wgs.to_file(l_shp_wgs, driver="ESRI Shapefile")
+            artifacts["points_shp_wgs84"] = str(p_shp_wgs)
+            artifacts["lines_shp_wgs84"] = str(l_shp_wgs)
+
+        if export_kml or export_kmz:
+            points_wgs = points_gdf.to_crs(epsg=4326)
+            lines_wgs = lines_gdf_2d.to_crs(epsg=4326)
+            if export_kml:
+                p_kml = output_folder / f"{direction}_hyporheic_points.kml"
+                l_kml = output_folder / f"{direction}_hyporheic_pathlines.kml"
+                points_wgs.to_file(p_kml, driver="KML")
+                lines_wgs.to_file(l_kml, driver="KML")
+                artifacts["points_kml"] = str(p_kml)
+                artifacts["lines_kml"] = str(l_kml)
+            if export_kmz:
+                p_kmz = output_folder / f"{direction}_hyporheic_points.kmz"
+                l_kmz = output_folder / f"{direction}_hyporheic_pathlines.kmz"
+                with zipfile.ZipFile(p_kmz, "w", zipfile.ZIP_DEFLATED) as kmz:
+                    kmz.write(output_folder / f"{direction}_hyporheic_points.kml",
+                              f"{direction}_hyporheic_points.kml")
+                with zipfile.ZipFile(l_kmz, "w", zipfile.ZIP_DEFLATED) as kmz:
+                    kmz.write(output_folder / f"{direction}_hyporheic_pathlines.kml",
+                              f"{direction}_hyporheic_pathlines.kml")
+                artifacts["points_kmz"] = str(p_kmz)
+                artifacts["lines_kmz"] = str(l_kmz)
+
+        if export_gpkg:
+            p_gpkg = output_folder / f"{direction}_hyporheic_points.gpkg"
+            l_gpkg = output_folder / f"{direction}_hyporheic_pathlines_2D.gpkg"
+            try:
+                points_gdf.to_file(p_gpkg, layer="points", driver="GPKG")
+                lines_gdf_2d.to_file(l_gpkg, layer="lines_2d", driver="GPKG")
+                artifacts["points_gpkg"] = str(p_gpkg)
+                artifacts["lines_gpkg"] = str(l_gpkg)
+            except Exception:
+                pass
 
     # ---------------- Publication‑ready stats TXT ----------------
     # First, compute Zone-Budget hyporheic throughflow and prepend that section.
     zone_lines: list[str] = []
-    zone_report: dict[str, float | int] = {}
+    zone_report: dict[str, float | int | str] = {}
+
+    from flopy.utils import CellBudgetFile
 
     try:
-        # Find a budget (CBC) file
-        cands = [
+        # --- locate a budget file we can open ---
+        candidates = [
+            workspace_gwf / f"{gwf_model_name}.cbb",
             workspace_gwf / f"{gwf_model_name}.cbc",
+            workspace_gwf / f"{gwf_model_name}.bud",
+            workspace_gwf / "gwf_model.cbb",
             workspace_gwf / "gwf_model.cbc",
-        ] + list(Path(workspace_gwf).glob("*.cbc"))
-        bud_path = next((p for p in cands if p.exists()), None)
+            workspace_gwf / "gwf_model.bud",
+            *sorted(Path(workspace_gwf).glob("*.cbb")),
+            *sorted(Path(workspace_gwf).glob("*.cbc")),
+            *sorted(Path(workspace_gwf).glob("*.bud")),
+        ]
+        candidates = [p for p in candidates if p.exists() and p.stat().st_size > 0]
+        if not candidates:
+            raise FileNotFoundError("No budget file (*.cbb|*.cbc|*.bud) found in GWF workspace.")
 
-        if bud_path is None:
-            raise FileNotFoundError("No *.cbc budget file found in GWF workspace.")
+        # choose first viable file
+        used_path = candidates[0]
+        cbc = CellBudgetFile(str(used_path), precision="double")
 
-        cbc = CellBudgetFile(str(bud_path))
-        # Get last FLOW-JA-FACE as full 3D
-        flowja_list = cbc.get_data(text="FLOW-JA-FACE", full3D=True)
-        if isinstance(flowja_list, list) and len(flowja_list) > 0:
-            flowja = flowja_list[-1]
+        # choose timestep — use caller's choice if given, otherwise last record
+        if budget_kstpkper is None:
+            kkp = cbc.get_kstpkper() if hasattr(cbc, "get_kstpkper") else None
+            budget_kstpkper_eff = kkp[-1] if kkp else None
         else:
-            flowja = flowja_list
+            budget_kstpkper_eff = budget_kstpkper
 
-        # Build unique start and end cell sets from first/last per particle
-        def _valid_kji(k, j, i):
-            return (0 <= k < nlay) and (0 <= j < nrow) and (0 <= i < ncol)
+        # pull full‑3D per‑cell net budget for the specified term (default FLOW‑JA‑FACE)
+        def _get_flow3d():
+            if budget_kstpkper_eff is None:
+                a = cbc.get_data(text=budget_term, full3D=True)
+                if not a:
+                    raise RuntimeError(f"No records for '{budget_term}' in {used_path.name}")
+                arr = a[-1]
+            else:
+                a = cbc.get_data(kstpkper=budget_kstpkper_eff, text=budget_term, full3D=True)
+                if not a:
+                    raise RuntimeError(
+                        f"No records for '{budget_term}' at kstpkper={budget_kstpkper_eff} in {used_path.name}"
+                    )
+                arr = a[0]
 
-        start_cells = []
-        end_cells = []
-        for rstart, rend in zip(first_pts.itertuples(index=False), last_pts.itertuples(index=False)):
-            k0 = int(getattr(rstart, "k")) if not np.isnan(getattr(rstart, "k")) else None
-            j0 = int(getattr(rstart, "y")) if np.isnan(getattr(rstart, "row")) else int(getattr(rstart, "row"))
-            i0 = int(getattr(rstart, "x")) if np.isnan(getattr(rstart, "col")) else int(getattr(rstart, "col"))
-            k1 = int(getattr(rend, "k")) if not np.isnan(getattr(rend, "k")) else None
-            j1 = int(getattr(rend, "y")) if np.isnan(getattr(rend, "row")) else int(getattr(rend, "row"))
-            i1 = int(getattr(rend, "x")) if np.isnan(getattr(rend, "col")) else int(getattr(rend, "col"))
+            arr = np.asarray(arr)
+            shp = gwf.modelgrid.shape  # (nlay, nrow, ncol)
+            if arr.ndim == 3 and arr.shape == shp:
+                return arr
+            if arr.ndim == 1 and arr.size == gwf.modelgrid.nnodes:
+                # some builds may return flattened ncells vector
+                return arr.reshape(shp)
+            # One more try: sometimes full3D returns a 3D array but reshaping is needed
+            if arr.ndim == 3 and arr.size == int(np.prod(shp)):
+                return arr.reshape(shp)
+            raise RuntimeError(
+                f"Unexpected shape for '{budget_term}' (got {arr.shape}, expected {shp} or (nnodes,))."
+            )
 
-            # Prefer already computed layer/row/col from df_long rows:
+        flow3d = _get_flow3d()
+
+        # ---------- build "zones" from your filtered endpoints (route from the working example) ----------
+        # Use robust cell-edge mapping (works with variable DELR/DELC), then infer layer from top/botm.
+        x_edges = np.concatenate(([0.0], np.cumsum(delr)))
+        y_edges = np.concatenate(([0.0], np.cumsum(delc)))
+        total_y = float(np.sum(delc))
+        nlay_mg, nrow_mg, ncol_mg = gwf.modelgrid.shape
+
+        def _infer_kji_from_xyz(x_model: float, y_model_top_axis: float, z_model: float,
+                                *, ztol: float = 1.0e-6) -> tuple[int, int, int] | None:
+            # i/j from model-axis x (left→right) and y (top→bottom) with clamping
+            i = int(np.clip(np.searchsorted(x_edges, x_model, side="right") - 1, 0, ncol_mg - 1))
+            j = int(np.clip(np.searchsorted(y_edges, total_y - y_model_top_axis, side="right") - 1, 0, nrow_mg - 1))
+
+            # layer from top/botm at (j,i)
+            bots = botm[:, j, i]
+            tops = np.empty_like(bots)
+            tops[0] = top[j, i]
+            if nlay_mg > 1:
+                tops[1:] = botm[:-1, j, i]
+
+            # Treat z == top as inside the top layer; clamp above/below column
+            if z_model >= (tops[0] - ztol):
+                return (0, j, i)
+            if z_model <= (bots[-1] + ztol):
+                return (nlay_mg - 1, j, i)
+
+            in_layer = (z_model >= (bots - ztol)) & (z_model <= (tops + ztol))
+            if in_layer.any():
+                return (int(np.argmax(in_layer)), j, i)
+
+            # Fallback: choose nearest layer center (very rare)
+            centers = 0.5 * (tops + bots)
+            return (int(np.argmin(np.abs(centers - z_model))), j, i)
+
+
+        # Start/End "zones": unique cells at particle starts/ends (from filtered endpoints)
+        start_cells: set[tuple[int, int, int]] = set()
+        end_cells:   set[tuple[int, int, int]] = set()
+
+        for ep in filtered_particles:
+            s = _infer_kji_from_xyz(float(ep["x0"]), float(ep["y0"]), float(ep["z0"]))
+            e = _infer_kji_from_xyz(float(ep["x"]),  float(ep["y"]),  float(ep["z"]))
+            if s is not None:
+                start_cells.add(s)
+            if e is not None:
+                end_cells.add(e)
+
+
+        if not end_cells:
             try:
-                k0 = int(df_long[(df_long["particleid"] == rstart.particleid) & (df_long["time"] == rstart.time)]["layer"].iloc[0])
-                j0 = int(df_long[(df_long["particleid"] == rstart.particleid) & (df_long["time"] == rstart.time)]["row"].iloc[0])
-                i0 = int(df_long[(df_long["particleid"] == rstart.particleid) & (df_long["time"] == rstart.time)]["col"].iloc[0])
+                # Use the already-opened PathlineFile (pl_reader). If not available, open it here.
+                for pid in filtered_particle_ids:
+                    g = pl_reader.get_data(partid=pid)
+                    if not g:
+                        continue
+                    last = g[-1]
+                    e = _infer_kji_from_xyz(float(last["x"]), float(last["y"]), float(last["z"]))
+                    if e is not None:
+                        end_cells.add(e)
             except Exception:
                 pass
-            try:
-                k1 = int(df_long[(df_long["particleid"] == rend.particleid) & (df_long["time"] == rend.time)]["layer"].iloc[0])
-                j1 = int(df_long[(df_long["particleid"] == rend.particleid) & (df_long["time"] == rend.time)]["row"].iloc[0])
-                i1 = int(df_long[(df_long["particleid"] == rend.particleid) & (df_long["time"] == rend.time)]["col"].iloc[0])
-            except Exception:
-                pass
 
-            if k0 is not None and _valid_kji(k0, j0, i0):
-                start_cells.append((k0, j0, i0))
-            if k1 is not None and _valid_kji(k1, j1, i1):
-                end_cells.append((k1, j1, i1))
 
-        # Unique
-        start_cells = sorted(set(start_cells))
-        end_cells = sorted(set(end_cells))
+        if (not start_cells) and (not end_cells):
+            raise RuntimeError("Could not infer any start/end cells from endpoints for zone budget.")
 
-        # Sum flows
-        def _cell_flow(arr, k, j, i):
-            # full3D normally returns (nlay,nrow,ncol); fallback to flattened
-            if arr is None:
-                return np.nan
-            if isinstance(arr, np.ndarray):
-                if arr.ndim == 3:
-                    return float(arr[k, j, i])
-                elif arr.ndim == 1:
-                    icell = gwf.modelgrid.get_node((k, j, i))
-                    return float(arr[icell])
-            try:
-                icell = gwf.modelgrid.get_node((k, j, i))
-                return float(arr[icell])
-            except Exception:
-                return np.nan
+        # ---------- Sum per‑cell net budgets in each zone ----------
+        def _vals(cells: set[tuple[int, int, int]]) -> np.ndarray:
+            if not cells:
+                return np.array([], dtype=float)
+            return np.array([float(flow3d[k, j, i]) for (k, j, i) in cells], dtype=float)
 
-        start_flows = np.array([_cell_flow(flowja, k, j, i) for (k, j, i) in start_cells], dtype=float)
-        end_flows   = np.array([_cell_flow(flowja, k, j, i) for (k, j, i) in end_cells], dtype=float)
+        start_vals = _vals(start_cells)
+        end_vals   = _vals(end_cells)
 
-        # Sum signed and absolute magnitudes
-        total_start = np.nansum(start_flows)
-        total_end   = np.nansum(end_flows)
-        abs_start   = np.nansum(np.abs(start_flows))
-        abs_end     = np.nansum(np.abs(end_flows))
+        total_start = float(np.nansum(start_vals))                # signed into‑cell
+        total_end   = float(np.nansum(end_vals))                  # signed into‑cell
+        abs_start   = float(np.nansum(np.abs(start_vals)))        # magnitude
+        abs_end     = float(np.nansum(np.abs(end_vals)))          # magnitude
 
-        # Throughflow definition: average of magnitudes (robust to sign convention)
-        through_avg_mag = 0.5 * (abs_start + abs_end)
-        net_balance = total_start + total_end
+        # Throughflow magnitude (average of magnitudes of entry/exit sums).
+        # This mirrors your earlier idea but follows the "route" of sampling a single full3D budget slice.
+        #through_avg_mag = 0.5 * (abs_start + abs_end)
+        through_avg_mag = max(abs_start, abs_end) #corrected because the averaging doesn't seem to work
+        net_balance     = total_start + total_end                 # should be ~0 for steady runs
 
+        # Assemble report + pretty lines
         zone_report = {
+            "budget_path": str(used_path),
+            "budget_term": str(budget_term),
+            "kstpkper": tuple(budget_kstpkper_eff) if budget_kstpkper_eff is not None else None,
+            "flow3d_shape": tuple(int(x) for x in np.asarray(flow3d).shape),
             "n_start_cells": int(len(start_cells)),
             "n_end_cells": int(len(end_cells)),
-            "total_start_flow_ft3_d": float(total_start),
-            "total_end_flow_ft3_d": float(total_end),
-            "abs_start_ft3_d": float(abs_start),
-            "abs_end_ft3_d": float(abs_end),
-            "throughflow_avg_abs_ft3_d": float(through_avg_mag),
-            "net_flow_balance_ft3_d": float(net_balance),
+            "total_start_flow_ft3_d": total_start,
+            "total_end_flow_ft3_d": total_end,
+            "abs_start_ft3_d": abs_start,
+            "abs_end_ft3_d": abs_end,
+            "throughflow_avg_abs_ft3_d": through_avg_mag,
+            "net_flow_balance_ft3_d": net_balance,
         }
 
-        # Write block
         zone_lines.append("Zone Budget — Hyporheic Throughflow (ft³/d)")
+        zone_lines.append(f"  budget file: {Path(used_path).name}")
+        zone_lines.append(f"  term: {budget_term}")
+        zone_lines.append(
+            f"  kstpkper: {budget_kstpkper_eff if budget_kstpkper_eff is not None else 'last record'}"
+        )
         zone_lines.append(f"  start cells: {len(start_cells)}")
         zone_lines.append(f"  end cells: {len(end_cells)}")
         zone_lines.append(f"  total start flow (signed): {total_start:,.3f} ft³/d")
@@ -2148,6 +2898,7 @@ def process_and_export_modpath7_results(
         zone_report = {"error": str(e)}
 
     artifacts["zone_budget"] = zone_report
+
 
     # Other publication stats (kept, but gradients now reflect corrected particle-level values)
     spans = df_long.groupby("particleid").apply(
@@ -2192,7 +2943,64 @@ def process_and_export_modpath7_results(
         artifacts["results"] = str(results_txt)
 
     # ---------------- PNGs — Distributions (kept) ----------------
-    # [snip unchanged plotting code for brevity]
+    if export_pngs:
+        # (1) Length/Width/Depth combined figure
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+        # length 3D
+        s_len = pd.to_numeric(_col(df_pub, "total_length_per_particle", "total_length_ft"),
+                              errors="coerce").dropna()
+        sns.histplot(s_len, kde=True, ax=axes[0])
+        axes[0].set_xlabel("3D Path Length (ft)"); axes[0].set_ylabel("Count")
+        axes[0].set_title("Path Length")
+        # width (plan‑view excursion as diag)
+        s_w = pd.to_numeric(df_pub["span_xy_diag"], errors="coerce").dropna()
+        sns.histplot(s_w, kde=True, ax=axes[1])
+        axes[1].set_xlabel("Plan‑View Excursion (ft)"); axes[1].set_ylabel("Count")
+        axes[1].set_title("Plan‑View Width")
+        # depth (vertical excursion)
+        s_d = pd.to_numeric(df_pub["vertical_excursion"], errors="coerce").dropna()
+        sns.histplot(s_d, kde=True, ax=axes[2])
+        axes[2].set_xlabel("Vertical Excursion (ft)"); axes[2].set_ylabel("Count")
+        axes[2].set_title("Vertical Range")
+        plt.tight_layout()
+        p_len_w_d = output_folder / f"{direction}_pathline_length_width_depth_distributions.png"
+        artifacts["plot_paths"]["length_width_depth"] = _maybe_save(fig, p_len_w_d)
+        artifacts["plots"].append(str(p_len_w_d))
+
+        # (2) Residence time distribution
+        fig = plt.figure(figsize=(8, 5))
+        ax = plt.gca()
+        rt = pd.to_numeric(_col(df_pub, "total_residence_time_per_particle", "total_residence_time_days"),
+                           errors="coerce").dropna()
+        if not rt.empty:
+            sns.histplot(rt, kde=True, ax=ax)
+        ax.set_xlabel("Residence Time (days)"); ax.set_ylabel("Count")
+        ax.set_title("Residence Time Distribution")
+        plt.tight_layout()
+        p_rt = output_folder / f"{direction}_residence_time_distribution.png"
+        artifacts["plot_paths"]["residence_time"] = _maybe_save(fig, p_rt)
+        artifacts["plots"].append(str(p_rt))
+
+        # (3) Velocity distribution
+        fig = plt.figure(figsize=(8, 5))
+        ax = plt.gca()
+        vv = pd.to_numeric(_col(df_pub, "average_particle_velocity_per_particle", "particle_velocity_ft_per_day"),
+                           errors="coerce").dropna()
+        if not vv.empty:
+            sns.histplot(vv, kde=True, ax=ax)
+        ax.set_xlabel("Average Velocity (ft/day)"); ax.set_ylabel("Count")
+        ax.set_title("Particle Velocity Distribution")
+        plt.tight_layout()
+        p_vv = output_folder / f"{direction}_velocity_distribution.png"
+        artifacts["plot_paths"]["velocity"] = _maybe_save(fig, p_vv)
+        artifacts["plots"].append(str(p_vv))
+    else:
+        if include_pngs_in_return:
+            artifacts["plots"].extend([
+                str(output_folder / f"{direction}_pathline_length_width_depth_distributions.png"),
+                str(output_folder / f"{direction}_residence_time_distribution.png"),
+                str(output_folder / f"{direction}_velocity_distribution.png"),
+            ])
 
     return artifacts
 
@@ -2612,11 +3420,22 @@ def plot_hyporheic_workflow(
     finite_vals = finite_vals[np.isfinite(finite_vals)]
     levels = np.linspace(finite_vals.min(), finite_vals.max(), 20) if finite_vals.size else np.linspace(0.0, 1.0, 20)
 
-    gdf_lines = gpd.read_file(pathlines_shp) if Path(pathlines_shp).exists() else gpd.GeoDataFrame()
+    # gdf_lines = gpd.read_file(pathlines_shp) if Path(pathlines_shp).exists() else gpd.GeoDataFrame()
+    # after (robust to ""/None and directories)
+    gdf_lines = (
+        gpd.read_file(pathlines_shp)
+        if (pathlines_shp and Path(pathlines_shp).is_file())
+        else gpd.GeoDataFrame()
+    )
     if not gdf_lines.empty and gdf_lines.crs != img_crs:
         gdf_lines = gdf_lines.to_crs(img_crs)
 
-    gdf_points = gpd.read_file(particle_points_shp) if Path(particle_points_shp).exists() else gpd.GeoDataFrame()
+    # gdf_points = gpd.read_file(particle_points_shp) if Path(particle_points_shp).exists() else gpd.GeoDataFrame()
+    gdf_points = (
+        gpd.read_file(particle_points_shp)
+        if (particle_points_shp and Path(particle_points_shp).is_file())
+        else gpd.GeoDataFrame()
+    )
     if not gdf_points.empty and gdf_points.crs != img_crs:
         gdf_points = gdf_points.to_crs(img_crs)
 
@@ -3442,27 +4261,65 @@ def _grid_footprint_from_vertices(mg) -> tuple[Polygon, gpd.GeoDataFrame, float,
 # ----------------------------
 # Orchestrator
 # ----------------------------
+# def scenario(
+#     cfg, idomain: np.ndarray, chd_data: list[list[float]], river_cells: list[tuple[int, int, int, float]],
+#     write: bool = True, run: bool = True, plot: bool = True, silent: bool = False
+# ) -> tuple[flopy.mf6.MFSimulation, flopy.mf6.ModflowGwf]:
+#     gwfsim, gwf = build_gwf_model(cfg, chd_data, idomain)
+    
+#     # Set additional simulation options
+#     #gwfsim.set_all_data_external(binary=True)... this doesn't seem to work in current flopy version
+#     gwfsim.simulation_data.auto_set_sizes = False #Shortcut
+#     gwfsim.simulation_data.verify_data = False #Shortcut
+#     gwfsim.simulation_data.lazy_io = True #Shortcut
+
+#     if write:
+#         write_models(gwfsim, silent=silent)
+#     if run:
+#         print("Running MODFLOW 6...")
+#         run_models(gwfsim, silent=False)
+#         print("Building MODPATH 7 forward")
+#         mp_fwd, _mp_bwd = build_particle_models(cfg.sim_name, 
+#                                                 gwf, river_cells, 
+#                                                 mp7_ws=cfg.mp7_ws, 
+#                                                 exe_path=cfg.md7_exe_path,
+#                                                 nxy=3,
+#                                                 nz_per_cell=3,
+#                                                 include_stage_depth=True,
+#                                                 layers_below=2,
+#                                                 xy_margin=None,
+#                                                 z_margin=0.05,
+#                                                 z_scheme="stage_then_below")
+#         if write:
+#             write_models(mp_fwd, silent=silent)
+#         print("Running MODPATH 7 forward...")
+#         run_models(mp_fwd, silent=silent)
+#     return gwfsim, gwf
 def scenario(
     cfg, idomain: np.ndarray, chd_data: list[list[float]], river_cells: list[tuple[int, int, int, float]],
     write: bool = True, run: bool = True, plot: bool = True, silent: bool = False
 ) -> tuple[flopy.mf6.MFSimulation, flopy.mf6.ModflowGwf]:
-    gwfsim, gwf = build_gwf_model(cfg, chd_data, idomain)
-    
-    # Set additional simulation options
-    #gwfsim.set_all_data_external(binary=True)... this doesn't seem to work in current flopy version
-    gwfsim.simulation_data.auto_set_sizes = False #Shortcut
-    gwfsim.simulation_data.verify_data = False #Shortcut
-    gwfsim.simulation_data.lazy_io = True #Shortcut
+    # Build GWF with Option B CHD split
+    gwfsim, gwf = build_gwf_model(cfg, chd_data, idomain, river_cells=river_cells)
+
+    # (optional) reduce Flopy overhead as you had
+    gwfsim.simulation_data.auto_set_sizes = False
+    gwfsim.simulation_data.verify_data = False
+    gwfsim.simulation_data.lazy_io = True
 
     if write:
         write_models(gwfsim, silent=silent)
     if run:
         print("Running MODFLOW 6...")
         run_models(gwfsim, silent=False)
+
         print("Building MODPATH 7 forward")
-        mp_fwd, _mp_bwd = build_particle_models(cfg.sim_name, gwf, river_cells, mp7_ws=cfg.mp7_ws, exe_path=cfg.md7_exe_path)
+        mp_fwd, _mp_bwd = build_particle_models(
+            cfg.sim_name, gwf, river_cells, mp7_ws=cfg.mp7_ws, exe_path=cfg.md7_exe_path
+        )
         if write:
             write_models(mp_fwd, silent=silent)
         print("Running MODPATH 7 forward...")
         run_models(mp_fwd, silent=silent)
+
     return gwfsim, gwf

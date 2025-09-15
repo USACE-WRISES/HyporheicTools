@@ -1,0 +1,81 @@
+MIT License
+
+Copyright (c) 2025 HyporheicTools contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+Third-Party Notices and License Information
+-------------------------------------------------------------------------------
+
+Scope
+- The MIT license above applies to the original source code in this repository
+  (e.g., files under `src/HyporheicTools/**`, project configuration, and
+  documentation), except where noted below.
+- Some components included with this repository are third-party works that are
+  provided under their own licenses. Those licenses govern your use of those
+  components and are not superseded by the MIT license above.
+
+Bundled Binaries (bin/modflow, src/HyporheicTools/bin/modflow)
+- This repository includes certain groundwater modeling executables for
+  convenience, such as (names may vary by platform/version):
+  `mf6.exe`, `libmf6.dll`, `mp7.exe`, `zbud6.exe`, `zonbud3.exe`, `mf2000.exe`,
+  `mf2005.exe`, `mfusg.exe`, `mfnwt.exe`, `mflgr.exe`, `mt3dms.exe`,
+  `mt3dusgs.exe`, `vs2dt.exe`, `crt.exe`, and related tools. These are
+  authored primarily by the U.S. Geological Survey (USGS) and are generally
+  released by USGS as public domain works. They are redistributed here for
+  user convenience and are provided AS IS without warranty. When redistributing
+  these binaries, retain USGS attribution and disclaimers and do not imply
+  USGS endorsement of your product.
+- Trade, firm, or product names are used for descriptive purposes only and do
+  not imply endorsement by the U.S. Government.
+
+Triangle (triangle.exe)
+- The `triangle.exe` binary is distributed under a custom license authored by
+  Jonathan Richard Shewchuk. It has specific redistribution and usage terms
+  that may restrict certain uses. If you redistribute this binary, include the
+  Triangle license text and ensure your use complies with the author’s terms.
+  If your intended use is commercial or otherwise restricted, obtain the
+  appropriate permission or remove this binary from your distribution.
+
+Python Dependencies (installed via pip/conda; not bundled here)
+- This project depends on several third-party Python packages that are not
+  included in this repository’s source code or wheels. They are installed
+  separately in your environment and are governed by their own licenses. Common
+  examples include: NumPy (BSD-3-Clause), SciPy (BSD-3-Clause), pandas
+  (BSD-3-Clause), Matplotlib (Matplotlib License), Seaborn (BSD-3-Clause),
+  Shapely (BSD-3-Clause; links to GEOS), Rasterio (BSD-3-Clause), GeoPandas
+  (BSD-3-Clause), PyProj (MIT), FloPy (BSD-3-Clause), and others. Always refer
+  to each package’s distribution metadata for the authoritative license.
+- Note on GEOS/LGPL: Shapely dynamically links to GEOS (LGPL). This repository
+  does not bundle GEOS. If you create a frozen/standalone binary that bundles
+  GEOS, ensure your distribution complies with the LGPL’s requirements.
+
+How to Produce a Complete Third-Party Report for Your Build
+- For transparency when packaging or releasing, generate a third-party license
+  report from your active environment, then archive it with your release:
+  Example: `pip install pip-licenses && pip-licenses --from=mixed \
+  --with-urls --with-license-file --format=markdown > THIRD_PARTY_LICENSES.md`
+  Review and append notices for any bundled non-Python binaries (e.g., USGS,
+  Triangle) so the report reflects what you actually redistribute.
+
+Contact and Attribution
+- Please keep this file with any copies or distributions of the repository.
+- For questions about HyporheicTools licensing, open an issue in the project
+  repository. For third-party components, consult the original authors.

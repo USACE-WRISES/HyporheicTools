@@ -61,10 +61,10 @@ boundary_condition_mode: "4 Corner Gradients"
 
 # If using "4 Corner Gradients":
 # Positive → flow toward stream (adds head as distance grows).
-upstream_left_fpl_gw_gradient:  0.010
-upstream_right_fpl_gw_gradient: 0.010
-downstream_left_fpl_gw_gradient: 0.010
-downstream_right_fpl_gw_gradient: 0.010
+upstream_left_fpl_gw_gradient:  0.005
+upstream_right_fpl_gw_gradient: 0.005
+downstream_left_fpl_gw_gradient: 0.005
+downstream_right_fpl_gw_gradient: 0.005
 
 # If using "Spatially Varying Gradient": provide both profiles
 # Each profile is a space-separated series of "fraction,gradient" pairs.

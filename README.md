@@ -241,4 +241,11 @@ The included `examples/basic_case/output` demonstrates the expected structure.
 
 ## License
 
-No license file found.
+This project is licensed under the MIT License. See `LICENSE` for the full text.
+
+Third‑party components included with this repository retain their own licenses:
+- USGS MODFLOW/MODPATH and related executables in `bin/modflow` and `src/HyporheicTools/bin/modflow` are public domain works by the U.S. Geological Survey and include no‑warranty disclaimers.
+- `triangle.exe` is licensed under Jonathan R. Shewchuk’s custom Triangle license; review its terms before redistribution.
+- Python dependencies (NumPy, SciPy, pandas, Matplotlib, Seaborn, Shapely, Rasterio, GeoPandas, PyProj, FloPy, etc.) are governed by their respective licenses when installed in your environment.
+
+See the “Third‑Party Notices and License Information” section inside `LICENSE` for details and guidance on generating a complete third‑party report for your build.
