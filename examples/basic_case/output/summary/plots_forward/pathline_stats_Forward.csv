@@ -1,36 +1,36 @@
 Group,Stat,Value
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),budget file,gwf_model.cbb
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),term,CHD
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),kstpkper,"(0, 0)"
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),start cells,46.0
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),end cells,19.0
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),total start flow (signed),943.725 ftÂ³/d
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),total end flow (signed),"-1,493.738 ftÂ³/d"
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),|start|,"1,117.877 ftÂ³/d"
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),|end|,"1,493.738 ftÂ³/d"
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),"hyporheic throughflow (avg(|start|,|end|))","1,493.738 ftÂ³/d"
-Zone Budget â€” Hyporheic Throughflow (ftÂ³/d),net flow balance (start+end),-550.013 ftÂ³/d
-Particle Path â€” 3D Length (ft),count,39.0
-Particle Path â€” 3D Length (ft),mean,168.122 ft
-Particle Path â€” 3D Length (ft),median,166.844 ft
-Particle Path â€” 3D Length (ft),min,31.982 ft
-Particle Path â€” 3D Length (ft),max,270.611 ft
-Particle Path â€” 3D Length (ft),p10,114.882 ft
-Particle Path â€” 3D Length (ft),p90,229.252 ft
-Planâ€‘View Excursion (ft),count,39.0
-Planâ€‘View Excursion (ft),mean,158.235 ft
-Planâ€‘View Excursion (ft),median,157.631 ft
-Planâ€‘View Excursion (ft),min,30.946 ft
-Planâ€‘View Excursion (ft),max,249.450 ft
-Planâ€‘View Excursion (ft),p10,106.856 ft
-Planâ€‘View Excursion (ft),p90,214.234 ft
-"Straightâ€‘Line Distance (3D, ft)",count,39.0
-"Straightâ€‘Line Distance (3D, ft)",mean,157.218 ft
-"Straightâ€‘Line Distance (3D, ft)",median,157.567 ft
-"Straightâ€‘Line Distance (3D, ft)",min,30.951 ft
-"Straightâ€‘Line Distance (3D, ft)",max,244.867 ft
-"Straightâ€‘Line Distance (3D, ft)",p10,106.663 ft
-"Straightâ€‘Line Distance (3D, ft)",p90,212.617 ft
+Zone Budget — Hyporheic Throughflow (ft³/d),budget file,gwf_model.cbb
+Zone Budget — Hyporheic Throughflow (ft³/d),term,CHD
+Zone Budget — Hyporheic Throughflow (ft³/d),kstpkper,"(0, 0)"
+Zone Budget — Hyporheic Throughflow (ft³/d),start cells,46.0
+Zone Budget — Hyporheic Throughflow (ft³/d),end cells,19.0
+Zone Budget — Hyporheic Throughflow (ft³/d),total start flow (signed),943.725 ft³/d
+Zone Budget — Hyporheic Throughflow (ft³/d),total end flow (signed),"-1,493.738 ft³/d"
+Zone Budget — Hyporheic Throughflow (ft³/d),|start|,"1,117.877 ft³/d"
+Zone Budget — Hyporheic Throughflow (ft³/d),|end|,"1,493.738 ft³/d"
+Zone Budget — Hyporheic Throughflow (ft³/d),"hyporheic throughflow (avg(|start|,|end|))","1,493.738 ft³/d"
+Zone Budget — Hyporheic Throughflow (ft³/d),net flow balance (start+end),-550.013 ft³/d
+Particle Path — 3D Length (ft),count,39.0
+Particle Path — 3D Length (ft),mean,168.122 ft
+Particle Path — 3D Length (ft),median,166.844 ft
+Particle Path — 3D Length (ft),min,31.982 ft
+Particle Path — 3D Length (ft),max,270.611 ft
+Particle Path — 3D Length (ft),p10,114.882 ft
+Particle Path — 3D Length (ft),p90,229.252 ft
+Plan‑View Excursion (ft),count,39.0
+Plan‑View Excursion (ft),mean,158.235 ft
+Plan‑View Excursion (ft),median,157.631 ft
+Plan‑View Excursion (ft),min,30.946 ft
+Plan‑View Excursion (ft),max,249.450 ft
+Plan‑View Excursion (ft),p10,106.856 ft
+Plan‑View Excursion (ft),p90,214.234 ft
+"Straight‑Line Distance (3D, ft)",count,39.0
+"Straight‑Line Distance (3D, ft)",mean,157.218 ft
+"Straight‑Line Distance (3D, ft)",median,157.567 ft
+"Straight‑Line Distance (3D, ft)",min,30.951 ft
+"Straight‑Line Distance (3D, ft)",max,244.867 ft
+"Straight‑Line Distance (3D, ft)",p10,106.663 ft
+"Straight‑Line Distance (3D, ft)",p90,212.617 ft
 Vertical Excursion (ft),count,39.0
 Vertical Excursion (ft),mean,10.681 ft
 Vertical Excursion (ft),median,11.030 ft
@@ -52,17 +52,17 @@ Average Particle Velocity (ft/day),min,0.489 ft/day
 Average Particle Velocity (ft/day),max,5.699 ft/day
 Average Particle Velocity (ft/day),p10,0.869 ft/day
 Average Particle Velocity (ft/day),p90,2.187 ft/day
-Hydraulic Gradient (â€“),count,39.0
-Hydraulic Gradient (â€“),mean,0.016
-Hydraulic Gradient (â€“),median,0.016
-Hydraulic Gradient (â€“),min,0.013
-Hydraulic Gradient (â€“),max,0.021
-Hydraulic Gradient (â€“),p10,0.014
-Hydraulic Gradient (â€“),p90,0.018
-Hyporheic Volume per Particle (ftÂ³),count,39.0
-Hyporheic Volume per Particle (ftÂ³),mean,"52,157.450 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),median,"52,295.679 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),min,"47,891.187 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),max,"54,000.354 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),p10,"51,047.065 ftÂ³"
-Hyporheic Volume per Particle (ftÂ³),p90,"53,280.818 ftÂ³"
+Hydraulic Gradient (–),count,39.0
+Hydraulic Gradient (–),mean,0.016
+Hydraulic Gradient (–),median,0.016
+Hydraulic Gradient (–),min,0.013
+Hydraulic Gradient (–),max,0.021
+Hydraulic Gradient (–),p10,0.014
+Hydraulic Gradient (–),p90,0.018
+Hyporheic Volume per Particle (ft³),count,39.0
+Hyporheic Volume per Particle (ft³),mean,"52,157.450 ft³"
+Hyporheic Volume per Particle (ft³),median,"52,295.679 ft³"
+Hyporheic Volume per Particle (ft³),min,"47,891.187 ft³"
+Hyporheic Volume per Particle (ft³),max,"54,000.354 ft³"
+Hyporheic Volume per Particle (ft³),p10,"51,047.065 ft³"
+Hyporheic Volume per Particle (ft³),p90,"53,280.818 ft³"
